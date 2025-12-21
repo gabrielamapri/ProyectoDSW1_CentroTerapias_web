@@ -1,16 +1,44 @@
 import React, { useEffect, useState } from 'react'
-import { apiFetch } from '../utils/api'
+import { apiFetch } from '../utils/api' // si no existe, hay fallback
+
+// Log al cargar el módulo (se verá al importar el componente)
+console.debug('[Citas] module loaded')
 
 export default function Citas() {
+  console.debug('[Citas] render start')
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    apiFetch('/api/citas')
-      .then(raw => {
-        console.debug('[Citas] raw response', raw)
+    console.debug('[Citas] useEffect start (mount)')
+    const fetchWithFallback = async () => {
+      try {
+        let raw = null
+        if (typeof apiFetch === 'function') {
+          try {
+            const r = await apiFetch('/api/citas')
+            if (r && typeof r.json === 'function') {
+              raw = await r.json().catch(() => null)
+            } else {
+              raw = r
+            }
+            console.debug('[Citas] apiFetch returned', raw)
+          } catch (e) {
+            console.warn('[Citas] apiFetch failed', e)
+          }
+        }
+
+        if (raw == null) {
+          const url = 'http://localhost:5291/api/citas'
+          console.debug('[Citas] fallback fetch ->', url)
+          const res = await fetch(url, { credentials: 'include' })
+          console.debug('[Citas] fetch status', res.status, res.headers.get('content-type'))
+          if (!res.ok) throw new Error('HTTP ' + res.status)
+          raw = await res.json().catch(() => null)
+          console.debug('[Citas] fetch json', raw)
+        }
+
         const list = Array.isArray(raw) ? raw : (raw && raw.value) ? raw.value : []
-        // Normalizar la respuesta para renderizar de forma consistente
         const normalized = (list || []).map(c => {
           const fecha = c.fechaInicio ?? c.fecha ?? c.fechaHora ?? c.FechaInicio ?? c.Fecha
           const pacienteNombre =
@@ -48,10 +76,16 @@ export default function Citas() {
             raw: c
           }
         })
+
         console.debug('[Citas] normalized', { count: normalized.length, sample: normalized[0] })
         setItems(normalized)
-      })
-      .catch((e) => setError(e.message || String(e)))
+      } catch (e) {
+        console.error('[Citas] error', e)
+        setError(e.message || String(e))
+      }
+    }
+
+    fetchWithFallback()
   }, [])
 
   if (error) return <div className="error">Error: {error}</div>
@@ -64,11 +98,20 @@ export default function Citas() {
   function handleEdit(item) {
     alert('Editar cita: ' + (item.id ?? JSON.stringify(item)))
   }
-  function handleCancel(item) {
+  async function handleCancel(item) {
     if (!confirm('Cancelar cita?')) return
-    // Reemplaza por la llamada real a la API cuando quieras:
-    // await apiFetch(`/api/citas/${item.id}`, { method: 'DELETE' })
-    alert('Cancelar cita (demo): ' + (item.id ?? JSON.stringify(item)))
+    try {
+      if (typeof apiFetch === 'function') {
+        await apiFetch(`/api/citas/${item.id}`, { method: 'DELETE' })
+      } else {
+        const url = `http://localhost:5291/api/citas/${item.id}`
+        const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+      }
+      setItems(prev => prev.filter(i => i.id !== item.id))
+    } catch (e) {
+      alert('Error al cancelar: ' + (e.message || String(e)))
+    }
   }
 
   return (
