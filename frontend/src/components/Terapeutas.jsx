@@ -127,9 +127,7 @@ export default function Terapeutas() {
               <tr key={t.id || t.Id || JSON.stringify(t)}>
                 <td>{t.Nombres ?? t.nombres ?? t.nombre ?? '—'}</td>
                 <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
-                <td>{t.EspecialidadDisplay ?? (() => {
-                  const maybeName = t.EspecialidadNombre ?? (t.Especialidad && (typeof t.Especialidad === 'string' ? t.Especialidad : (t.Especialidad.Nombre ?? t.Especialidad.nombre)));
-                  if (maybeName) return maybeName
+                <td>{t.EspecialidadDisplay ?? t.especialidadNombre ?? t.EspecialidadNombre ?? (t.Especialidad && (typeof t.Especialidad === 'string' ? t.Especialidad : (t.Especialidad.Nombre ?? t.Especialidad.nombre))) ?? (() => {
                   const eid = t.EspecialidadId ?? t.especialidadId ?? null
                   if (eid) {
                     const found = (especialidades || []).find(e => String(e.id ?? e.Id) === String(eid))
