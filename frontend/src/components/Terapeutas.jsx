@@ -46,7 +46,11 @@ export default function Terapeutas() {
 
   useEffect(() => {
     apiFetch('/api/especialidades')
-      .then((res) => setEspecialidades(Array.isArray(res) ? res : []))
+      .then((res) => {
+        // Accept either: raw array OR object like { value: [...] }
+        const list = Array.isArray(res) ? res : (res && Array.isArray(res.value) ? res.value : [])
+        setEspecialidades(list)
+      })
       .catch(() => setEspecialidades([]))
   }, [])
 
@@ -146,7 +150,7 @@ export default function Terapeutas() {
               <select className="input" aria-label="Especialidad" value={editing.EspecialidadId ?? editing.especialidadId ?? ''} onChange={e=>setEditing(s=>({...s,EspecialidadId:e.target.value ? Number(e.target.value) : null}))}>
                 <option value="">Sin especialidad</option>
                 {(especialidades || []).map(es => (
-                  <option key={es.id ?? es.Id ?? es.Id} value={(es.id ?? es.Id ?? es.Id)}>{es.Nombre ?? es.nombre ?? es.name}</option>
+                  <option key={es.id ?? es.Id} value={(es.id ?? es.Id)}>{es.Nombre ?? es.nombre ?? es.name}</option>
                 ))}
               </select>
               <input placeholder="Presentación / descripción breve" aria-label="Presentación" className="input" value={editing.Presentacion ?? editing.presentacion ?? ''} onChange={e=>setEditing(s=>({...s,Presentacion:e.target.value}))} />
