@@ -19,9 +19,18 @@ export default function Terapeutas() {
         const q = []
         q.push(`page=${page}`)
         q.push(`pageSize=${pageSize}`)
-        if (search) q.push(`search=${encodeURIComponent(search)}`)
+        // if the search term matches an especialidad name, prefer querying by especialidadId
+        if (search) {
+          const normalize = (s) => s ? s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() : ''
+          const ns = normalize(search)
+          const found = (especialidades || []).find(e => normalize(e.Nombre ?? e.nombre ?? e.name).includes(ns))
+          if (found) q.push(`especialidadId=${found.id ?? found.Id}`)
+          else q.push(`search=${encodeURIComponent(search)}`)
+        }
         const ep = `/api/terapeutas?${q.join('&')}`
+        console.debug('[Terapeutas] fetching', ep, { page, pageSize, search })
         const res = await apiFetchWithMeta(ep)
+        console.debug('[Terapeutas] response', res, { headers: res?.headers, dataLen: Array.isArray(res.data) ? res.data.length : undefined })
         if (!mounted) return
         setItems(res.data || [])
         const cnt = res.headers.get('x-total-count') || (Array.isArray(res.data) ? String(res.data.length) : '0')
@@ -33,7 +42,7 @@ export default function Terapeutas() {
     }
     load()
     return () => { mounted = false }
-  }, [page, pageSize, search])
+  }, [page, pageSize, search, especialidades])
 
   useEffect(() => {
     apiFetch('/api/especialidades')
@@ -85,7 +94,7 @@ export default function Terapeutas() {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Terapeutas</h2>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <input placeholder="Buscar por nombre, apellido o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
+          <input placeholder="Buscar por nombre, apellido, especialidad o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
           <button className="btn" onClick={() => setEditing({})}>Nuevo Terapeuta</button>
         </div>
       </div>
