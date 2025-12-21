@@ -98,9 +98,9 @@ export default function App() {
               <button className={view==='familias'? 'active':''} onClick={() => setView('familias')}>Familias</button>
               <button className={view==='pacientes'? 'active':''} onClick={() => setView('pacientes')}>Pacientes</button>
               <button className={view==='terapeutas'? 'active':''} onClick={() => setView('terapeutas')}>Terapeutas</button>
+              <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>Tipo de Sesión</button>
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
               <button className={view==='especialidades'? 'active':''} onClick={() => setView('especialidades')}>Especialidades</button>
-              <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>TipoSesiones</button>
               <button className={view==='franjas'? 'active':''} onClick={() => setView('franjas')}>Franjas</button>
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               
