@@ -7,6 +7,7 @@ export default function Terapeutas() {
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(null)
   const [especialidades, setEspecialidades] = useState([])
+  const [displayItems, setDisplayItems] = useState(null)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [total, setTotal] = useState(0)
@@ -24,6 +25,7 @@ export default function Terapeutas() {
         const res = await apiFetchWithMeta(ep)
         if (!mounted) return
         setItems(res.data || [])
+        try { console.debug('API /api/terapeutas -> data', res.data) } catch (e) {}
         const cnt = res.headers.get('x-total-count') || (Array.isArray(res.data) ? String(res.data.length) : '0')
         setTotal(Number(cnt))
       } catch (e) {
@@ -37,9 +39,27 @@ export default function Terapeutas() {
 
   useEffect(() => {
     apiFetch('/api/especialidades')
-      .then((res) => setEspecialidades(Array.isArray(res) ? res : []))
+      .then((res) => { setEspecialidades(Array.isArray(res) ? res : []); try { console.debug('API /api/especialidades ->', res) } catch(e){} })
       .catch(() => setEspecialidades([]))
   }, [])
+
+  useEffect(() => {
+    if (!items) { setDisplayItems(null); return }
+    try {
+      const mapped = (items || []).map(t => {
+        const maybeName = t.EspecialidadNombre ?? (t.Especialidad && (typeof t.Especialidad === 'string' ? t.Especialidad : (t.Especialidad.Nombre ?? t.Especialidad.nombre)));
+        if (maybeName) return { ...t, EspecialidadDisplay: maybeName }
+        const eid = t.EspecialidadId ?? t.especialidadId ?? null
+        if (eid && Array.isArray(especialidades) && especialidades.length) {
+          const found = especialidades.find(e => String(e.id ?? e.Id) === String(eid))
+          if (found) return { ...t, EspecialidadDisplay: found.Nombre ?? found.nombre ?? found.name ?? '—' }
+        }
+        return { ...t, EspecialidadDisplay: '—' }
+      })
+      setDisplayItems(mapped)
+      try { console.debug('Computed EspecialidadDisplay for terapeutas', mapped.map(x=>({ id: x.id ?? x.Id, EspecialidadDisplay: x.EspecialidadDisplay }))) } catch(e){}
+    } catch(e) {}
+  }, [items, especialidades])
 
   if (error) return <div className="error">Error: {error}</div>
   if (!items) return <div className="card"><div className="spinner" /></div>
@@ -95,7 +115,7 @@ export default function Terapeutas() {
             <tr>
               <th>Nombres</th>
               <th>Apellidos</th>
-              <th>Especialidades</th>
+              <th>Especialidad</th>
               <th>Presentación</th>
               <th>Teléfono</th>
               <th>Dirección</th>
@@ -103,11 +123,20 @@ export default function Terapeutas() {
             </tr>
           </thead>
           <tbody>
-            {(items || []).map((t) => (
+            {(displayItems || items || []).map((t) => (
               <tr key={t.id || t.Id || JSON.stringify(t)}>
                 <td>{t.Nombres ?? t.nombres ?? t.nombre ?? '—'}</td>
                 <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
-                <td>{t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
+                <td>{t.EspecialidadDisplay ?? (() => {
+                  const maybeName = t.EspecialidadNombre ?? (t.Especialidad && (typeof t.Especialidad === 'string' ? t.Especialidad : (t.Especialidad.Nombre ?? t.Especialidad.nombre)));
+                  if (maybeName) return maybeName
+                  const eid = t.EspecialidadId ?? t.especialidadId ?? null
+                  if (eid) {
+                    const found = (especialidades || []).find(e => String(e.id ?? e.Id) === String(eid))
+                    if (found) return found.Nombre ?? found.nombre ?? found.name ?? '—'
+                  }
+                  return '—'
+                })()}</td>
                 <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? t.Presentacion ?? '—'}</td>
                 <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
                 <td>{t.Direccion ?? t.direccion ?? t.address ?? '—'}</td>
@@ -151,6 +180,8 @@ export default function Terapeutas() {
           </form>
         </Modal>
       )}
+      
     </section>
   )
 }
+

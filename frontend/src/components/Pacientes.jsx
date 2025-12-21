@@ -93,7 +93,7 @@ export default function Pacientes() {
     function onOpenCreate(e){
       const d = e.detail || {}
       const famId = d.familiaId ?? d.FamiliaId ?? d.id ?? d.Id ?? null
-      setEditing({ ...(famId ? { FamiliaId: famId } : {}) })
+      setEditing({ ...(famId ? { FamiliaId: famId, __showFamilySelect: true } : { __showFamilySelect: false }) })
       try { setPage(1) } catch {}
     }
     window.addEventListener('open:create:paciente', onOpenCreate)
@@ -169,6 +169,8 @@ export default function Pacientes() {
     }
   }
 
+  const isEditingExisting = !!(editing && (editing.Id ?? editing.id))
+
   if (error) return <div className="error">Error: {error}</div>
   if (!items) return <div className="card"><div className="spinner" /></div>
 
@@ -178,7 +180,7 @@ export default function Pacientes() {
         <h2>Pacientes</h2>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <input placeholder="Buscar por nombre, apellido o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
-          <button className="btn" onClick={() => setEditing({})}>Nuevo Paciente</button>
+          <button className="btn" onClick={() => setEditing({ __showFamilySelect: false })}>Nuevo Paciente</button>
         </div>
       </div>
       <div style={{marginTop:12}} className="card">
@@ -248,14 +250,16 @@ export default function Pacientes() {
                 className="input"
               />
               {/* Edad calculada por el backend; no se ingresa manualmente */}
-              <select aria-label="FamiliaId" value={(editing.FamiliaId ?? editing.familiaId) ?? ''} onChange={e=>setEditing(s=>({...s,FamiliaId: e.target.value === '' ? '' : Number(e.target.value)}))} className="input">
-                <option value="">Seleccionar familia</option>
-                {familiasList.map(f => (
-                  <option key={f.id ?? f.Id} value={f.id ?? f.Id}>
-                    {((f.responsable1Nombre || f.responsable1Apellido) ? `${f.responsable1Nombre ?? ''} ${f.responsable1Apellido ?? ''}`.trim() : (f.ResponsableNombre ?? f.responsableNombre ?? f.nombre ?? f.name)) || `Familia ${f.id ?? f.Id}`}
-                  </option>
-                ))}
-              </select>
+              {(!isEditingExisting && (((editing.FamiliaId ?? editing.familiaId) !== undefined && (editing.FamiliaId ?? editing.familiaId) !== null) || editing.__showFamilySelect)) && (
+                <select aria-label="FamiliaId" value={(editing.FamiliaId ?? editing.familiaId) ?? ''} onChange={e=>setEditing(s=>({...s,FamiliaId: e.target.value === '' ? '' : Number(e.target.value)}))} className="input">
+                  <option value="">Seleccionar familia</option>
+                  {familiasList.map(f => (
+                    <option key={f.id ?? f.Id} value={f.id ?? f.Id}>
+                      {((f.responsable1Nombre || f.responsable1Apellido) ? `${f.responsable1Nombre ?? ''} ${f.responsable1Apellido ?? ''}`.trim() : (f.ResponsableNombre ?? f.responsableNombre ?? f.nombre ?? f.name)) || `Familia ${f.id ?? f.Id}`}
+                    </option>
+                  ))}
+                </select>
+              )}
               <select aria-label="Sexo" value={(editing.Sexo ?? editing.sexo) || ''} onChange={e=>setEditing(s=>({...s,Sexo:e.target.value}))} className="input">
                 <option value="">Seleccionar sexo</option>
                 {(sexoOptions || []).map(o => (
