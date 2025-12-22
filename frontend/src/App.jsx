@@ -66,7 +66,7 @@ export default function App() {
           <img src="/logo-cerebro-feliz.svg" alt="Logo NeuroCrecer" className="logo" />
           <div>
             <div className="title">NeuroCrecer</div>
-            <div className="subtitle">Centro de Sesiones</div>
+            <div className="subtitle">Centro Especializado en Terapias Infantiles</div>
           </div>
         </div>
 
@@ -112,10 +112,78 @@ export default function App() {
         <div className="content">
 
       {view === 'home' && (
-        <section className="hero card">
-          <h2 style={{margin:'0 0 8px 0'}}>Bienvenido al Centro de Sesiones</h2>
-          <p className="muted">Plataforma administrativa para gestionar pacientes, terapeutas y citas. Usa el menú para navegar o inicia sesión para acceder a funciones protegidas.</p>
-        </section>
+        <>
+          <section className="hero card hero-pastel">
+            <h2 style={{margin:'0 0 8px 0'}}>Bienvenido al Centro Especializado en Terapias Infantiles</h2>
+            <p className="muted">Plataforma administrativa para gestionar pacientes, terapeutas y citas.</p>
+          </section>
+
+          <div className="home-cards" style={{marginTop:12}}>
+            <div className="card home-card pastel" onClick={() => setView('pacientes')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 20c0-2.21 3.58-4 6-4s6 1.79 6 4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Pacientes</h3>
+              <small className="muted">Gestionar personas atendidas</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('familias')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 20c0-2.21 3.58-4 6-4s6 1.79 6 4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Familias</h3>
+              <small className="muted">Grupos y contactos familiares</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('terapeutas')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v6" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 12h12" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 20h16v-4H4v4z" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Terapeutas</h3>
+              <small className="muted">Equipo terapéutico y especialidades</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('citas')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Citas</h3>
+              <small className="muted">Programar y ver citas</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('franjas')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 7v5l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#374151" strokeWidth="1.2"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Franjas</h3>
+              <small className="muted">Disponibilidad de terapeutas</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('especialidades')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l2.09 6.26L20 9l-5 3.64L16.18 20 12 16.9 7.82 20 9 12.64 4 9l5.91-.74L12 2z" stroke="#374151" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Especialidades</h3>
+              <small className="muted">Tipos de atención</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('tiposesiones')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 8v5l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Tipo de Sesión</h3>
+              <small className="muted">Duración y precios</small>
+            </div>
+
+            <div className="card home-card pastel" onClick={() => setView('notas')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15V6a2 2 0 0 0-2-2H7" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 9v11a2 2 0 0 0 2 2h14" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Notas Sesión</h3>
+              <small className="muted">Apuntes clínicos por cita</small>
+            </div>
+          </div>
+        </>
       )}
 
       <main style={{marginTop:12}}>

@@ -43,14 +43,19 @@ export default function Auth({ onLogin }) {
         <div className="bubble b8"></div>
         <div className="bubble b9"></div>
         <div className="bubble b10"></div>
-        <div className="bubble b11"></div>
+          <div className="bubble b11"></div>
+          <div className="bubble b12"></div>
+          <div className="bubble b13"></div>
+          <div className="bubble b14"></div>
+          <div className="bubble b15"></div>
+          <div className="bubble b16"></div>
       </div>
       <div className="auth-card">
         <div className="auth-hero">
-          <img src="/logo-cerebro-feliz.svg" alt="Logo Centro Sesiones" className="logo" />
+          <img src="/logo-cerebro-feliz.svg" alt="Logo Centro Especializado en Terapias Infantiles" className="logo" />
           <div>
             <h2 style={{margin:0}}>NeuroCrecer</h2>
-            <p style={{margin:0,color:'#64748b'}}>Centro de Sesiones</p>
+            <p style={{margin:0,color:'#64748b'}}>Centro Especializado en Terapias Infantiles</p>
           </div>
         </div>
 

@@ -8,27 +8,34 @@ export default function NotasSesion(){
   const [error,setError] = useState(null)
 
   useEffect(()=>{
-    const tries = ['/api/notassesion','/api/notas-sesion','/api/notasSesion','/api/notasesion','/api/notassesion']
     (async()=>{
-      for(const ep of tries){
-        try{ const res = await apiFetch(ep); if(Array.isArray(res)){ setItems(res); return } }catch(e){}
-      }
+      try{
+        const res = await apiFetch('/api/NotasSesion')
+        if(Array.isArray(res)){ setItems(res); return }
+      }catch(e){}
       setError('No se pudo cargar notas de sesión')
     })()
   },[])
 
-  async function refresh(){ const res = await apiFetch('/api/notassesion'); setItems(res) }
+  async function refresh(){ const res = await apiFetch('/api/NotasSesion'); setItems(res) }
 
   async function handleDelete(it){
     const id = it.id ?? it.Id
     if(!id) return alert('ID no disponible')
     if(!confirm('Eliminar nota?')) return
-    try{ await apiFetch(`/api/notassesion/${id}`,{method:'DELETE'}); await refresh() }
+    try{ await apiFetch(`/api/NotasSesion/${id}`,{method:'DELETE'}); await refresh() }
     catch(e){ alert('Error: '+(e.message||e)) }
   }
 
   async function handleSave(obj){
-    try{ const payload = {...obj}; const id = payload.Id ?? payload.id; if(id) await apiFetch(`/api/notassesion/${id}`,{method:'PUT', body: payload}); else await apiFetch('/api/notassesion',{method:'POST', body: payload}); await refresh(); setEditing(null)}catch(e){alert('Error: '+(e.message||e))}
+    try{
+      const payload = {...obj}
+      const id = payload.Id ?? payload.id
+      if(id) await apiFetch(`/api/NotasSesion/${id}`,{method:'PUT', body: payload})
+      else await apiFetch('/api/NotasSesion',{method:'POST', body: payload})
+      await refresh()
+      setEditing(null)
+    }catch(e){alert('Error: '+(e.message||e))}
   }
 
   if(error) return <div className="error">Error: {error}</div>
@@ -42,12 +49,12 @@ export default function NotasSesion(){
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
-          <thead><tr><th>CitaId</th><th>TerapeutaId</th><th>Notas</th><th>Fecha</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Paciente</th><th>Terapeuta</th><th>Notas</th><th>Fecha</th><th>Acciones</th></tr></thead>
           <tbody>
             {items.map(it=> (
               <tr key={it.id ?? it.Id}>
-                <td>{it.CitaId ?? it.citaId ?? '—'}</td>
-                <td>{it.TerapeutaId ?? it.terapeutaId ?? '—'}</td>
+                <td>{it.PacienteNombre ?? it.pacienteNombre ?? (it.CitaId ?? it.citaId ?? '—')}</td>
+                <td>{it.TerapeutaNombre ?? it.terapeutaNombre ?? (it.TerapeutaId ?? it.terapeutaId ?? '—')}</td>
                 <td style={{maxWidth:420}}>{it.Notas ?? it.notas ?? ''}</td>
                 <td>{it.FechaCreacion ? new Date(it.FechaCreacion).toLocaleString() : (it.fechaCreacion ? new Date(it.fechaCreacion).toLocaleString() : '—')}</td>
                 <td className="actions">
