@@ -30,6 +30,9 @@ export default function NotasSesion(){
   async function handleSave(obj){
     try{
       const payload = {...obj}
+      // ensure numeric IDs
+      if (payload.CitaId || payload.citaId) payload.CitaId = Number(payload.CitaId ?? payload.citaId)
+      if (payload.TerapeutaId || payload.terapeutaId) payload.TerapeutaId = Number(payload.TerapeutaId ?? payload.terapeutaId)
       const id = payload.Id ?? payload.id
       if(id) await apiFetch(`/api/NotasSesion/${id}`,{method:'PUT', body: payload})
       else await apiFetch('/api/NotasSesion',{method:'POST', body: payload})

@@ -32,9 +32,22 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
+    // try to parse JSON error body to extract a message
+    let text = ''
+    try {
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('application/json')) {
+        const body = await res.json()
+        text = (body && (body.message || body.Message || body.error || body.error_description)) || JSON.stringify(body)
+      } else {
+        text = await res.text().catch(() => '')
+      }
+    } catch (e) {
+      text = await res.text().catch(() => '')
+    }
     const err = new Error(text || res.statusText || `HTTP ${res.status}`)
     err.status = res.status
+    try { err.body = JSON.parse(text) } catch(e){}
     throw err
   }
 
@@ -73,9 +86,21 @@ export async function apiFetchWithMeta(path, options = {}) {
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
+    let text = ''
+    try {
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('application/json')) {
+        const body = await res.json()
+        text = (body && (body.message || body.Message || body.error || body.error_description)) || JSON.stringify(body)
+      } else {
+        text = await res.text().catch(() => '')
+      }
+    } catch (e) {
+      text = await res.text().catch(() => '')
+    }
     const err = new Error(text || res.statusText || `HTTP ${res.status}`)
     err.status = res.status
+    try { err.body = JSON.parse(text) } catch(e){}
     throw err
   }
 

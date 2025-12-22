@@ -25,6 +25,30 @@ export default function Franjas(){
     }catch(e){ alert('Error: '+(e.message||e)) }
   }
 
+    async function createException(franja){
+      const id = franja.id ?? franja.Id
+      if(!id) return alert('ID de franja no disponible')
+      const date = prompt('Fecha de la excepción (YYYY-MM-DD)')
+      if(!date) return
+      try{
+        await apiFetch(`/api/franjas/${id}/excepciones`, { method: 'POST', body: { Fecha: date } })
+        await refresh()
+        alert('Excepción creada')
+      }catch(e){ alert('Error: '+(e.message||e)) }
+    }
+
+    async function deleteException(franja){
+      const id = franja.id ?? franja.Id
+      if(!id) return alert('ID de franja no disponible')
+      const date = prompt('Fecha de la excepción a eliminar (YYYY-MM-DD)')
+      if(!date) return
+      try{
+        await apiFetch(`/api/franjas/${id}/excepciones?date=${encodeURIComponent(date)}`, { method: 'DELETE' })
+        await refresh()
+        alert('Excepción eliminada')
+      }catch(e){ alert('Error: '+(e.message||e)) }
+    }
+
   function ensureSeconds(t){
     if(!t) return ''
     if(typeof t !== 'string') t = String(t)
@@ -206,6 +230,8 @@ export default function Franjas(){
                   <td style={styles.td}>
                     <button style={{...styles.btn, ...styles.btnSmall}} onClick={()=>openEdit(it)}>Editar</button>
                     <button style={{...styles.btn, ...styles.btnGhost}} onClick={()=>handleDelete(it)}>Eliminar</button>
+                    <button className="btn small" onClick={()=>createException(it)} style={{marginLeft:8}}>Añadir excepción</button>
+                    <button className="btn small ghost" onClick={()=>deleteException(it)} style={{marginLeft:8}}>Eliminar excepción</button>
                   </td>
                 </tr>
               )
