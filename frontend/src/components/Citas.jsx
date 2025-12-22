@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { apiFetch } from '../utils/api' // si no existe, usamos fallback
+import { apiFetch } from '../utils/api'
+import Modal from './Modal'
 
 console.debug('[Citas] module loaded (improved)')
 
@@ -16,6 +17,7 @@ export default function Citas() {
   const [pacientesList, setPacientesList] = useState([])
   const [terapeutasList, setTerapeutasList] = useState([])
   const [tiposList, setTiposList] = useState([])
+  const [loadingTerapeutasCreate, setLoadingTerapeutasCreate] = useState(false)
 
   useEffect(() => {
     console.debug('[Citas] mount — starting fetch')
@@ -24,7 +26,6 @@ export default function Citas() {
 
     const safeParse = async (res) => {
       if (!res) return null
-      // If it's already parsed JSON
       if (typeof res === 'object' && !('json' in res)) return res
       try {
         return await res.json()
@@ -38,10 +39,9 @@ export default function Citas() {
       setError(null)
       try {
         let raw = null
-        // Prefer apiFetch when available
         if (typeof apiFetch === 'function') {
           try {
-            const r = await apiFetch('/api/citas', { signal: controller.signal })
+            const r = await apiFetch('/api/citas')
             raw = await safeParse(r)
             console.debug('[Citas] apiFetch result', raw)
           } catch (e) {
@@ -49,10 +49,8 @@ export default function Citas() {
           }
         }
 
-        // Fallback to relative URL (Vite proxy) then to absolute
         if (raw == null) {
           const rel = '/api/citas'
-          const abs = 'http://localhost:5291/api/citas'
           const url = rel
           console.debug('[Citas] fallback fetch ->', url)
           const res = await fetch(url, { credentials: 'include', signal: controller.signal })
@@ -130,13 +128,11 @@ export default function Citas() {
   async function handleCancel(item) {
     if (!confirm('Cancelar cita?')) return
     try {
-      // optimistic UI: remove locally first
       setItems(prev => prev.filter(i => i.id !== item.id))
 
       let resOk = false
       if (typeof apiFetch === 'function') {
         const r = await apiFetch(`/api/citas/${item.id}`, { method: 'DELETE' })
-        // apiFetch might return parsed JSON or Response — try to infer success
         if (r && r.ok === false) {
           throw new Error('Error al cancelar (apiFetch)')
         }
@@ -152,15 +148,12 @@ export default function Citas() {
       if (!resOk) throw new Error('No se pudo cancelar')
     } catch (e) {
       alert('Error al cancelar: ' + (e.message || String(e)))
-      // rollback: refetch list (simple approach)
       try {
-        // quick refetch
         const res = await (typeof apiFetch === 'function' ? apiFetch('/api/citas') : fetch('/api/citas', { credentials: 'include' }))
         const raw = (res && typeof res.json === 'function') ? await res.json() : res
         const list = Array.isArray(raw) ? raw : (raw && raw.value) ? raw.value : []
-        setItems(list.map(x => x)) // shallow reset, normalization will happen on next mount but keep simple
+        setItems(list.map(x => x))
       } catch {
-        // ignore
       }
     }
   }
@@ -168,7 +161,6 @@ export default function Citas() {
   async function handleCreateSubmit() {
     setCreateError(null)
     try {
-      // basic validation
       const pacienteId = Number(createForm.PacienteId) || null
       if (!pacienteId) return setCreateError('Seleccione un paciente válido')
       const terapeutaId = createForm.TerapeutaId ? Number(createForm.TerapeutaId) : null
@@ -184,11 +176,9 @@ export default function Citas() {
         Motivo: createForm.Motivo || ''
       }
       const res = await apiFetch('/api/citas', { method: 'POST', body: payload })
-      // success
       alert('Cita creada correctamente.')
       setShowCreate(false)
-      // refresh list
-      try { const r = await apiFetch('/api/citas'); const list = Array.isArray(r) ? r : (r && r.value) ? r.value : []; setItems(list.map(c=>c)) } catch(e){ /* ignore */ }
+      try { const r = await apiFetch('/api/citas'); const list = Array.isArray(r) ? r : (r && r.value) ? r.value : []; setItems(list.map(c=>c)) } catch(e){ }
     } catch (e) {
       console.error('[Citas] create error', e)
       const msg = e?.message || 'Error de servidor. Intenta más tarde.'
@@ -196,25 +186,64 @@ export default function Citas() {
     }
   }
 
-  // Load minimal lists when opening create modal
   useEffect(()=>{
     let mounted = true
     if(!showCreate) return
     (async()=>{
       try{
-        const [ps, ts, tt] = await Promise.all([
+        const [ps, tt] = await Promise.all([
           apiFetch('/api/pacientes').catch(()=>[]),
-          apiFetch('/api/terapeutas').catch(()=>[]),
-          apiFetch('/api/tipos-sesiones').catch(()=>[])
+          apiFetch('/api/TipoSesiones').catch(()=>[])
         ])
         if(!mounted) return
         setPacientesList(Array.isArray(ps)?ps: (ps && ps.value)?ps.value: [])
-        setTerapeutasList(Array.isArray(ts)?ts: (ts && ts.value)?ts.value: [])
         setTiposList(Array.isArray(tt)?tt: (tt && tt.value)?tt.value: [])
+        // intentionally DO NOT load terapeutas here; they will be loaded when user selects TipoSesion
+        setTerapeutasList([])
       }catch(e){ console.warn('[Citas] load lists failed', e) }
     })()
     return ()=>{ mounted = false }
   },[showCreate])
+
+  async function onTipoSesionChange(e) {
+    const tipoId = Number(e.target.value) || null
+    setCreateForm(s => ({ ...s, TipoSesionId: tipoId, TerapeutaId: '' }))
+    if (!tipoId) { setTerapeutasList([]); return }
+
+    // intentar obtener la especialidad directamente desde la lista cargada (asegurar Number comparaciones)
+    const tipo = (tiposList || []).find(t => Number(t.Id ?? t.id) === tipoId)
+    let especialidadId = tipo?.EspecialidadId ?? tipo?.especialidadId ?? tipo?.especialidad?.id
+
+    console.debug('[Citas] onTipoSesionChange tipoId, tipo, especialidadId(before fetch):', { tipoId, tipo, especialidadId })
+
+    // si no está en la lista, pedir detalle al backend
+    if (!especialidadId) {
+      try {
+        const detalle = await apiFetch(`/api/TipoSesiones/${tipoId}`)
+        especialidadId = detalle?.EspecialidadId ?? detalle?.especialidadId ?? detalle?.especialidad?.id
+        console.debug('[Citas] TipoSesion detalle:', detalle)
+      } catch (err) {
+        console.warn('No se pudo obtener tipoSesion detalle', err)
+        setTerapeutasList([])
+        return
+      }
+    }
+
+    console.debug('[Citas] resolved especialidadId:', especialidadId)
+    if (!especialidadId) { setTerapeutasList([]); return }
+
+    try {
+      setLoadingTerapeutasCreate(true)
+      const terapeutas = await apiFetch(`/api/terapeutas?especialidadId=${especialidadId}`)
+      console.debug('[Citas] terapeutas response', terapeutas)
+      setTerapeutasList(Array.isArray(terapeutas) ? terapeutas : (terapeutas && terapeutas.value) ? terapeutas.value : [])
+    } catch (err) {
+      console.warn('No se pudo cargar terapeutas filtrados', err)
+      setTerapeutasList([])
+    } finally {
+      setLoadingTerapeutasCreate(false)
+    }
+  }
 
   function handleView(item) {
     alert('Ver cita: ' + (item.id ?? JSON.stringify(item)))
@@ -246,18 +275,28 @@ export default function Citas() {
                     <option key={p.Id ?? p.id} value={p.Id ?? p.id}>{(p.Nombres || p.nombres || p.nombre || '') + ' ' + (p.Apellidos || p.apellidos || '')}</option>
                   ))}
                 </select>
-                <select className="input" value={createForm.TerapeutaId} onChange={e=>setCreateForm(s=>({...s,TerapeutaId: e.target.value === '' ? '' : Number(e.target.value)}))}>
-                  <option value="">Seleccione terapeuta (opcional)</option>
-                  {(terapeutasList||[]).map(t=> (
-                    <option key={t.Id ?? t.id} value={t.Id ?? t.id}>{((t.Nombres||t.nombres||t.nombre||'') + ' ' + (t.Apellidos||t.apellidos||'')) || (t.especialidadNombre || t.EspecialidadNombre || t.Especialidad?.Nombre || 'Terapeuta')}</option>
-                  ))}
-                </select>
-                <select className="input" value={createForm.TipoSesionId} onChange={e=>setCreateForm(s=>({...s,TipoSesionId: e.target.value === '' ? '' : Number(e.target.value)}))}>
-                  <option value="">Seleccione tipo de sesión (opcional)</option>
+
+                {/* Tipo de sesión primero */}
+                <select className="input" value={createForm.TipoSesionId} onChange={onTipoSesionChange}>
+                  <option value="">Seleccione tipo de sesión</option>
                   {(tiposList||[]).map(ts=> (
                     <option key={ts.Id ?? ts.id} value={ts.Id ?? ts.id}>{ts.Nombre ?? ts.nombre ?? ts.name}</option>
                   ))}
                 </select>
+
+                {/* Terapeuta dependiente del tipo seleccionado */}
+                <select
+                  className="input"
+                  value={createForm.TerapeutaId}
+                  onChange={e=>setCreateForm(s=>({...s,TerapeutaId: e.target.value === '' ? '' : Number(e.target.value)}))}
+                  disabled={!createForm.TipoSesionId || loadingTerapeutasCreate}
+                >
+                  <option value="">{createForm.TipoSesionId ? 'Seleccione terapeuta' : 'Seleccione tipo de sesión primero'}</option>
+                  {(!loadingTerapeutasCreate && (terapeutasList||[]).length>0) && (terapeutasList||[]).map(t=> (
+                    <option key={t.Id ?? t.id} value={t.Id ?? t.id}>{((t.Nombres||t.nombres||t.nombre||'') + ' ' + (t.Apellidos||t.apellidos||'')) || (t.especialidadNombre || t.EspecialidadNombre || t.Especialidad?.Nombre || 'Terapeuta')}</option>
+                  ))}
+                </select>
+
                 <input type="date" className="input" value={createForm.FechaDate} onChange={e=>setCreateForm(s=>({...s,FechaDate:e.target.value}))} />
                 <input type="time" className="input" value={createForm.FechaTime} onChange={e=>setCreateForm(s=>({...s,FechaTime:e.target.value}))} />
                 <input type="number" className="input" value={createForm.DuracionMinutos} onChange={e=>setCreateForm(s=>({...s,DuracionMinutos:Number(e.target.value)}))} />

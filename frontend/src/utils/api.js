@@ -1,9 +1,10 @@
-// prefer VITE_API_URL. In dev use relative paths so Vite proxy can forward to backend and avoid CORS.
-const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? '' : 'http://localhost:5291')
+// prefer VITE_API_URL, otherwise default to local backend at port 5291
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5291'
 
+// NOTE: uses `token` key to match frontend (localStorage.getItem('token'))
 export async function apiFetch(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
-  const token = localStorage.getItem('ct_token')
+  const token = localStorage.getItem('token')
   const headers = new Headers(options.headers || {})
 
   if (options.body && !(options.body instanceof FormData)) {
@@ -13,11 +14,12 @@ export async function apiFetch(path, options = {}) {
 
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
+  // ensure cookies/credentials are sent by default (can be overridden by caller)
+  const fetchOptions = { ...options, headers, credentials: options.credentials ?? 'include' }
+
   let res
   try {
-    // debug: log outgoing request info to help diagnose network/CORS issues
-    try { console.debug('apiFetch ->', url, { ...options, headers: Object.fromEntries(headers.entries()) }) } catch(e){}
-    res = await fetch(url, { ...options, headers })
+    res = await fetch(url, fetchOptions)
   } catch (err) {
     throw new Error(`Network error when fetching ${url}: ${err.message || 'failed to fetch'}`)
   }
@@ -32,22 +34,9 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    // try to parse JSON error body to extract a message
-    let text = ''
-    try {
-      const ct = res.headers.get('content-type') || ''
-      if (ct.includes('application/json')) {
-        const body = await res.json()
-        text = (body && (body.message || body.Message || body.error || body.error_description)) || JSON.stringify(body)
-      } else {
-        text = await res.text().catch(() => '')
-      }
-    } catch (e) {
-      text = await res.text().catch(() => '')
-    }
+    const text = await res.text().catch(() => '')
     const err = new Error(text || res.statusText || `HTTP ${res.status}`)
     err.status = res.status
-    try { err.body = JSON.parse(text) } catch(e){}
     throw err
   }
 
@@ -59,7 +48,7 @@ export async function apiFetch(path, options = {}) {
 // Similar to apiFetch but returns both parsed data and the response headers
 export async function apiFetchWithMeta(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
-  const token = localStorage.getItem('ct_token')
+  const token = localStorage.getItem('token')
   const headers = new Headers(options.headers || {})
 
   if (options.body && !(options.body instanceof FormData)) {
@@ -69,9 +58,11 @@ export async function apiFetchWithMeta(path, options = {}) {
 
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
+  const fetchOptions = { ...options, headers, credentials: options.credentials ?? 'include' }
+
   let res
   try {
-    res = await fetch(url, { ...options, headers })
+    res = await fetch(url, fetchOptions)
   } catch (err) {
     throw new Error(`Network error when fetching ${url}: ${err.message || 'failed to fetch'}`)
   }
@@ -86,21 +77,9 @@ export async function apiFetchWithMeta(path, options = {}) {
   }
 
   if (!res.ok) {
-    let text = ''
-    try {
-      const ct = res.headers.get('content-type') || ''
-      if (ct.includes('application/json')) {
-        const body = await res.json()
-        text = (body && (body.message || body.Message || body.error || body.error_description)) || JSON.stringify(body)
-      } else {
-        text = await res.text().catch(() => '')
-      }
-    } catch (e) {
-      text = await res.text().catch(() => '')
-    }
+    const text = await res.text().catch(() => '')
     const err = new Error(text || res.statusText || `HTTP ${res.status}`)
     err.status = res.status
-    try { err.body = JSON.parse(text) } catch(e){}
     throw err
   }
 
@@ -110,9 +89,9 @@ export async function apiFetchWithMeta(path, options = {}) {
 }
 
 export function saveToken(token) {
-  if (token) localStorage.setItem('ct_token', token)
+  if (token) localStorage.setItem('token', token)
 }
 
 export function clearToken() {
-  localStorage.removeItem('ct_token')
+  localStorage.removeItem('token')
 }
