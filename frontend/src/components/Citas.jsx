@@ -28,6 +28,10 @@ export default function Citas() {
   const [reprogramLoading, setReprogramLoading] = useState(false)
   const [reprogramItem, setReprogramItem] = useState(null)
 
+  // View modal state (replace simple alert)
+  const [showView, setShowView] = useState(false)
+  const [viewItem, setViewItem] = useState(null)
+
   // availability states for create
   const [availableDates, setAvailableDates] = useState(new Set()) // store yyyy-mm-dd strings (local)
   const [loadingAvailableDates, setLoadingAvailableDates] = useState(false)
@@ -118,6 +122,26 @@ export default function Citas() {
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } catch { return iso }
   }
+  
+  // Decide if a cita's estado allows reprogramming (hide for cancelled/anulada)
+  function canReprogramEstado(estado) {
+    if (!estado && estado !== 0) return true
+    const s = String(estado).toLowerCase()
+    return !(s.includes('cancel') || s.includes('anul'))
+  }
+
+  // Translate common backend status values to Spanish for UI
+  function translateEstado(raw) {
+    if (raw === null || raw === undefined) return 'Pendiente'
+    const s = String(raw).toLowerCase()
+    if (s.includes('sched') || s.includes('program') || s.includes('agend') ) return 'Programado'
+    if (s.includes('cancel') || s.includes('anul')) return 'Anulado'
+    if (s.includes('pend')) return 'Pendiente'
+    if (s.includes('done') || s.includes('complete')) return 'Completada'
+    // default: capitalize first letter
+    const str = String(raw)
+    return str.charAt(0).toUpperCase() + str.slice(1)
+  }
 
   // Normalization function — definitive single source of truth for mapping API results to UI items
   function normalizeCitas(list) {
@@ -157,7 +181,8 @@ export default function Citas() {
       const precio =
         (c.precio ?? c.Precio ?? c.tipoSesion?.precio ?? c.tipoSesion?.Precio ?? c.TipoSesion?.Precio) ?? null
 
-      const estado = c.estado ?? c.estadoCita ?? c.Estado ?? 'Pendiente'
+      const rawEstado = c.estado ?? c.estadoCita ?? c.Estado ?? 'Pendiente'
+      const estado = translateEstado(rawEstado)
       const observaciones = c.observaciones ?? c.descripcion ?? c.Observaciones ?? c.Observacion ?? c.notas ?? ''
 
       return {
@@ -582,7 +607,8 @@ export default function Citas() {
   }
 
   function handleView(item) {
-    alert(`Ver cita #${item.id}\nPaciente: ${item.pacienteNombre}\nFecha: ${item.fecha ? parseIsoSafe(item.fecha)?.toLocaleString() : '—'}\nEstado: ${item.estado}`)
+    setViewItem(item)
+    setShowView(true)
   }
 
   async function handleReprogramSubmit(e) {
@@ -718,6 +744,14 @@ export default function Citas() {
         @media (max-width:800px) { .form-grid { grid-template-columns: 1fr } }
 
         .muted { color:#7a7a7a; font-size:0.9rem; }
+        /* Estilo específico para botón Anular — versión 'danger' más visible */
+        .btn.cancel { background:#dc2626; color:#fff; border:1px solid rgba(139,10,10,0.15); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+        .btn.cancel:hover { transform:translateY(-1px); filter:brightness(0.95); }
+        .btn.small.cancel { padding:6px 8px; font-size:13px; }
+        .btn.cancel:disabled { opacity:0.6; cursor:not-allowed; filter:grayscale(0.1); }
+        .btn.cancel:focus { outline:2px solid rgba(220,38,38,0.18); }
+        .obs { background:#fff; border:1px solid rgba(0,0,0,0.04); padding:10px; border-radius:8px; color:#333; }
+        .view-row { display:flex; gap:8px; align-items:center; padding:6px 0; }
       `}</style>
 
       <section>
@@ -847,6 +881,41 @@ export default function Citas() {
             </Modal>
           )}
 
+          {showView && viewItem && (
+            <Modal title={`Detalle cita #${viewItem.id}`} onClose={()=>{ setShowView(false); setViewItem(null) }}>
+              <div style={{display:'grid',gap:8,maxWidth:560}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{fontSize:16,fontWeight:700}}>{viewItem.pacienteNombre || '—'}</div>
+                  <div style={{textAlign:'right'}}><span className="status-pill">{String(viewItem.estado)}</span></div>
+                </div>
+
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  <div style={{color:'#5f6b6f'}}><strong>Terapeuta</strong><div style={{marginTop:6}}>{viewItem.terapeutaNombre || '—'}</div></div>
+                  <div style={{color:'#5f6b6f'}}><strong>Fecha</strong><div style={{marginTop:6}}>{viewItem.fecha ? parseIsoSafe(viewItem.fecha)?.toLocaleString() : '—'}</div></div>
+                  <div style={{color:'#5f6b6f'}}><strong>Tipo de sesión</strong><div style={{marginTop:6}}>{viewItem.tipoSesionNombre || '—'}</div></div>
+                  <div style={{color:'#5f6b6f'}}><strong>Duración</strong><div style={{marginTop:6}}>{(viewItem.duracion ?? '—') + ' min'}</div></div>
+                </div>
+
+                <div style={{marginTop:6}}>
+                  <strong>Precio</strong>
+                  <div style={{marginTop:6}}>{viewItem.precio != null ? viewItem.precio : '—'}</div>
+                </div>
+
+                <div>
+                  <strong>Observaciones</strong>
+                  <div className="obs" style={{whiteSpace:'pre-wrap',marginTop:8}}>{viewItem.observaciones || '—'}</div>
+                </div>
+
+                <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:6}}>
+                  <button className="btn" onClick={()=>{ setShowView(false); setViewItem(null) }}>Cerrar</button>
+                  {canReprogramEstado(viewItem.estado) && (
+                    <button className="btn ghost" onClick={()=>{ setShowView(false); openReprogramModal(viewItem); setViewItem(null) }}>Reprogramar</button>
+                  )}
+                </div>
+              </div>
+            </Modal>
+          )}
+
           {items.map((c) => (
             <div className="card" key={c.id ?? JSON.stringify(c)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -866,9 +935,11 @@ export default function Citas() {
                   </div>
                   <div style={{ marginTop: 8 }}>
                     <button className="btn small" onClick={() => handleView(c)}>Ver</button>
-                    <button className="btn small" onClick={() => handleEdit(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
+                    {canReprogramEstado(c.estado) && (
+                      <button className="btn small" onClick={() => handleEdit(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
+                    )}
                     <button
-                      className="btn small ghost"
+                      className="btn small cancel"
                       onClick={() => handleCancel(c)}
                       style={{ marginLeft: 6 }}
                       disabled={!isAuthed}
