@@ -6,18 +6,28 @@ export default function NotasSesion(){
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(()=>{
-    (async()=>{
+    let mounted = true
+    async function load(){
       try{
-        const res = await apiFetch('/api/NotasSesion')
+        const url = search ? `/api/NotasSesion?search=${encodeURIComponent(search)}` : '/api/NotasSesion'
+        const res = await apiFetch(url)
+        if(!mounted) return
         if(Array.isArray(res)){ setItems(res); return }
       }catch(e){}
-      setError('No se pudo cargar notas de sesión')
-    })()
-  },[])
+      if(mounted) setError('No se pudo cargar notas de sesión')
+    }
+    load()
+    return ()=> { mounted = false }
+  },[search])
 
-  async function refresh(){ const res = await apiFetch('/api/NotasSesion'); setItems(res) }
+  async function refresh(){ 
+    const url = search ? `/api/NotasSesion?search=${encodeURIComponent(search)}` : '/api/NotasSesion'
+    const res = await apiFetch(url)
+    setItems(res)
+  }
 
   async function handleDelete(it){
     const id = it.id ?? it.Id
@@ -48,7 +58,17 @@ export default function NotasSesion(){
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <h2>Notas de Sesión</h2>
-        <button className="btn" onClick={()=>setEditing({})}>Nueva Nota</button>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <input
+            type="text"
+            className="input"
+            placeholder="Buscar por paciente, terapeuta o fecha..."
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            style={{width:360}}
+          />
+          <button className="btn" onClick={()=>setEditing({})}>Nueva Nota</button>
+        </div>
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
