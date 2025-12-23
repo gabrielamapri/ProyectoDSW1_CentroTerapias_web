@@ -10,9 +10,13 @@ export default function Citas() {
   console.debug('[Citas] render start')
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [isAuthed] = useState(!!localStorage.getItem('token'))
+
   const abortRef = useRef(null)
+  const debounceRef = useRef(null)
+  const mountedRef = useRef(true)
+
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState({ PacienteId: '', TerapeutaId: '', TipoSesionId: '', FechaDate: '', FechaTime: '', DuracionMinutos: 45, Motivo: '' })
   const [createError, setCreateError] = useState(null)
@@ -39,13 +43,12 @@ export default function Citas() {
   const [availableSlots, setAvailableSlots] = useState([]) // [{inicioIso, finIso}]
   const [loadingSlots, setLoadingSlots] = useState(false)
 
-  // availability states for reprogram (separados para evitar colisiones)
+  // availability states for reprogram
   const [reprogramAvailableDates, setReprogramAvailableDates] = useState(new Set())
   const [reprogramLoadingAvailableDates, setReprogramLoadingAvailableDates] = useState(false)
   const [reprogramAvailableSlots, setReprogramAvailableSlots] = useState([])
   const [reprogramLoadingSlots, setReprogramLoadingSlots] = useState(false)
 
-  // Helpers for local yyyy-mm-dd (avoid timezone shifts)
   function toYmdLocal(d) {
     if (!d) return ''
     if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d
@@ -57,8 +60,6 @@ export default function Citas() {
     const parts = ymd.split('-').map(Number)
     return new Date(parts[0], parts[1] - 1, parts[2])
   }
-
-  // Format a Date as local ISO without timezone: 'YYYY-MM-DDTHH:MM:SS'
   function formatLocalIso(dt) {
     if (!dt || !(dt instanceof Date)) return null
     const y = dt.getFullYear()
@@ -69,27 +70,21 @@ export default function Citas() {
     const ss = String(dt.getSeconds()).padStart(2, '0')
     return `${y}-${m}-${d}T${hh}:${mm}:${ss}`
   }
-
   function buildIsoFromLocalYmdAndTime(ymd, time) {
-    // ymd = 'YYYY-MM-DD', time = 'HH:MM'
     const [y, m, d] = ymd.split('-').map(Number)
     const [hh, mm] = (time || '').split(':').map(Number)
     const dt = new Date(y, m - 1, d, Number.isFinite(hh) ? hh : 0, Number.isFinite(mm) ? mm : 0, 0, 0)
-    return formatLocalIso(dt) // local ISO without 'Z'
+    return formatLocalIso(dt)
   }
-
-  // Robust ISO parsing: handle strings with/without timezone consistently (treat no-zone as LOCAL)
   function parseIsoSafe(s) {
     if (!s) return null
     if (s instanceof Date) return s
     if (typeof s === 'number') return new Date(s)
     const str = String(s).trim()
-    // If contains timezone info (Z or +|-offset) let Date parse it
     if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/i.test(str)) {
       const d = new Date(str)
       return isNaN(d.getTime()) ? null : d
     }
-    // If ISO-like but without timezone, treat as LOCAL time (preserve the hour the user expects)
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(str)) {
       const [datePart, timePart] = str.split('T')
       const [y, mo, da] = datePart.split('-').map(Number)
@@ -97,17 +92,12 @@ export default function Citas() {
       const d = new Date(y, mo - 1, da, hh || 0, mm || 0, ss || 0)
       return isNaN(d.getTime()) ? null : d
     }
-    // Fallback
     const d = new Date(str)
     return isNaN(d.getTime()) ? null : d
   }
-
-  // Extract HH:mm from ISO string or time value (for type="time" inputs)
   function extractTimeHHMM(value) {
     if (!value) return ''
-    // If already in HH:mm format, return as-is
     if (/^\d{2}:\d{2}$/.test(value)) return value
-    // If ISO or contains 'T', parse and extract time
     if (value.includes('T') || value.includes('-')) {
       const d = parseIsoSafe(value)
       if (!d) return ''
@@ -115,7 +105,6 @@ export default function Citas() {
     }
     return value
   }
-
   function formatTime(iso) {
     try {
       const d = parseIsoSafe(iso)
@@ -123,15 +112,11 @@ export default function Citas() {
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } catch { return iso }
   }
-  
-  // Decide if a cita's estado allows reprogramming (hide for cancelled/anulada)
   function canReprogramEstado(estado) {
     if (!estado && estado !== 0) return true
     const s = String(estado).toLowerCase()
     return !(s.includes('cancel') || s.includes('anul'))
   }
-
-  // Translate common backend status values to Spanish for UI
   function translateEstado(raw) {
     if (raw === null || raw === undefined) return 'Pendiente'
     const s = String(raw).toLowerCase()
@@ -139,12 +124,9 @@ export default function Citas() {
     if (s.includes('cancel') || s.includes('anul')) return 'Anulado'
     if (s.includes('pend')) return 'Pendiente'
     if (s.includes('done') || s.includes('complete')) return 'Completada'
-    // default: capitalize first letter
     const str = String(raw)
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
-
-  // Normalization function — definitive single source of truth for mapping API results to UI items
   function normalizeCitas(list) {
     const safe = Array.isArray(list) ? list : (list && list.value) ? list.value : []
     return (safe || []).map(c => {
@@ -157,7 +139,6 @@ export default function Citas() {
         c.PacienteNombre ??
         c.Paciente?.Nombre ??
         '—'
-
       const terapeutaNombre =
         c.terapeutaNombre ??
         c.TerapeutaNombre ??
@@ -165,10 +146,8 @@ export default function Citas() {
         c.terapeuta?.nombre ??
         c.terapeuta?.Nombre ??
         '—'
-
       const tipoSesionNombre =
         c.tipoSesionNombre ?? c.TipoSesionNombre ?? c.tipoSesion?.nombre ?? c.tipoSesion?.Name ?? c.tipoSesion?.Nombre ?? '—'
-
       const duracion =
         c.duracionMinutos ??
         c.duracion ??
@@ -178,14 +157,11 @@ export default function Citas() {
         c.tipoSesion?.DuracionMinutos ??
         (c.TipoSesion && c.TipoSesion.duracionMinutos) ??
         45
-
       const precio =
         (c.precio ?? c.Precio ?? c.tipoSesion?.precio ?? c.tipoSesion?.Precio ?? c.TipoSesion?.Precio) ?? null
-
       const rawEstado = c.estado ?? c.estadoCita ?? c.Estado ?? 'Pendiente'
       const estado = translateEstado(rawEstado)
       const observaciones = c.observaciones ?? c.descripcion ?? c.Observaciones ?? c.Observacion ?? c.notas ?? ''
-
       return {
         id: c.id ?? c.Id ?? c.citaId ?? null,
         fecha,
@@ -204,99 +180,87 @@ export default function Citas() {
     })
   }
 
+  // Initial load once
   useEffect(() => {
-    console.debug('[Citas] mount — starting fetch')
+    mountedRef.current = true
     const controller = new AbortController()
     abortRef.current = controller
-
-    const safeParse = async (res) => {
-      if (!res) return null
-      if (typeof res === 'object' && !('json' in res)) return res
+    const load = async () => {
       try {
-        return await res.json()
-      } catch {
-        return null
-      }
-    }
-
-    const fetchCitas = async () => {
-      setLoading(true)
-      setError(null)
-      try {
+        setLoading(true)
         let raw = null
-        if (typeof apiFetch === 'function') {
-          try {
-            const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
-            const r = await apiFetch(url)
-            raw = await safeParse(r)
-            console.debug('[Citas] apiFetch result', raw)
-          } catch (e) {
-            console.warn('[Citas] apiFetch failed:', e)
-          }
-        }
-
+        try {
+          raw = await apiFetch('/api/citas')
+        } catch {}
         if (raw == null) {
-          const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
-          console.debug('[Citas] fallback fetch ->', url)
-          const res = await fetch(url, { credentials: 'include', signal: controller.signal })
-          if (res.status === 401) {
-            setError('Autenticación requerida (401)')
-            setLoading(false)
-            return
-          }
+          const res = await fetch('/api/citas', { credentials: 'include', signal: controller.signal })
           if (!res.ok) throw new Error('HTTP ' + res.status)
-          raw = await safeParse(res)
-          console.debug('[Citas] fetch json', raw)
+          raw = await res.json().catch(()=>[])
         }
-
-        const normalized = normalizeCitas(Array.isArray(raw) ? raw : raw)
-        console.debug('[Citas] normalized', { count: normalized.length, sample: normalized[0] })
-        setItems(normalized)
+        if (!mountedRef.current) return
+        setItems(normalizeCitas(Array.isArray(raw) ? raw : raw))
       } catch (e) {
-        if (e.name === 'AbortError') {
-          console.debug('[Citas] fetch aborted')
-          return
-        }
-        console.error('[Citas] error', e)
+        if (!mountedRef.current) return
         setError(e.message || String(e))
       } finally {
-        setLoading(false)
+        if (mountedRef.current) setLoading(false)
       }
     }
+    load()
+    return () => { mountedRef.current = false; controller.abort() }
+  }, [])
 
-    fetchCitas()
-
-    return () => {
-      console.debug('[Citas] unmount — aborting fetch')
-      controller.abort()
-    }
+  // Debounced search – keeps input mounted so focus is not lost
+  useEffect(() => {
+    if (!mountedRef.current) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const controller = new AbortController()
+    abortRef.current = controller
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setLoading(true)
+        const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
+        let raw = null
+        try {
+          raw = await apiFetch(url)
+        } catch {}
+        if (raw == null) {
+          const res = await fetch(url, { credentials: 'include', signal: controller.signal })
+          if (!res.ok) throw new Error('HTTP ' + res.status)
+          raw = await res.json().catch(()=>[])
+        }
+        if (!mountedRef.current) return
+        setItems(normalizeCitas(Array.isArray(raw) ? raw : raw))
+      } catch (e) {
+        if (!mountedRef.current) return
+        setError(e.message || String(e))
+      } finally {
+        if (mountedRef.current) setLoading(false)
+      }
+    }, 250)
+    return () => { clearTimeout(debounceRef.current); controller.abort() }
   }, [search])
+
+  async function refresh(){
+    const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
+    const raw = await apiFetch(url).catch(async () => {
+      const res = await fetch(url, { credentials: 'include' })
+      return res.ok ? res.json() : []
+    })
+    setItems(normalizeCitas(Array.isArray(raw) ? raw : raw))
+  }
 
   async function handleCancel(item) {
     if (!confirm('Anular cita?')) return
     try {
-      // Optimistic UI:Mark as processing
       setItems(prev => (prev || []).map(i => i.id === item.id ? { ...i, estado: 'Anulando...' } : i))
-
-      if (typeof apiFetch === 'function') {
-        await apiFetch(`/api/citas/${item.id}/cancelar`, { method: 'PATCH' })
-      } else {
-        const res = await fetch(`/api/citas/${item.id}/cancelar`, { method: 'PATCH', credentials: 'include' })
-        if (res.status === 401) throw new Error('No autorizado (401)')
-        if (!res.ok) {
-          const txt = await res.text().catch(()=>null)
-          throw new Error(txt || ('HTTP ' + res.status))
-        }
-      }
-
-      // Update local list: mark as cancelled (backend uses "Cancelled")
+      await apiFetch(`/api/citas/${item.id}/cancelar`, { method: 'PATCH' })
       setItems(prev => (prev || []).map(i => i.id === item.id ? { ...i, estado: 'Cancelled' } : i))
     } catch (e) {
       alert('Error al anular: ' + (e.message || String(e)))
       try {
-        const r = await (typeof apiFetch === 'function' ? apiFetch('/api/citas') : fetch('/api/citas', { credentials: 'include' }))
-        const raw = (r && typeof r.json === 'function') ? await r.json() : r
-        const normalized = normalizeCitas(Array.isArray(raw) ? raw : raw)
+        const r = await apiFetch('/api/citas')
+        const normalized = normalizeCitas(Array.isArray(r) ? r : r)
         setItems(normalized)
       } catch {}
     }
@@ -311,15 +275,12 @@ export default function Citas() {
       const tipoSesionId = createForm.TipoSesionId ? Number(createForm.TipoSesionId) : null
       if (!createForm.FechaDate || !createForm.FechaTime) return setCreateError('Seleccione fecha y hora')
 
-      // FechaTime could be either a time (HH:MM) or a full ISO (from slot). Handle both.
       let fechaLocalIso
       if (createForm.FechaTime && (createForm.FechaTime.includes('T') || createForm.FechaTime.includes('-'))) {
         const parsed = parseIsoSafe(createForm.FechaTime)
         if (!parsed) return setCreateError('Fecha inválida')
-        // convert parsed date to local ISO without timezone so backend stores the same wall-clock hour
         fechaLocalIso = formatLocalIso(parsed)
       } else {
-        // build from local date + time to avoid timezone parse issues
         fechaLocalIso = buildIsoFromLocalYmdAndTime(createForm.FechaDate, createForm.FechaTime)
       }
 
@@ -335,20 +296,11 @@ export default function Citas() {
       alert('Cita creada correctamente.')
       setShowCreate(false)
 
-      // reload and normalize the list so UI shows duration immediately
-      try {
-        const r = await apiFetch('/api/citas')
-        const raw = Array.isArray(r) ? r : (r && r.value) ? r.value : r
-        const normalized = normalizeCitas(raw)
-        setItems(normalized)
-      } catch (e) {
-        // fallback: just refresh page if fetch fails
-        try { window.location.reload() } catch {}
-      }
+      const r = await apiFetch('/api/citas')
+      const normalized = normalizeCitas(Array.isArray(r) ? r : r)
+      setItems(normalized)
     } catch (e) {
-      console.error('[Citas] create error', e)
-      const msg = e?.message || 'Error de servidor. Intenta más tarde.'
-      setCreateError(msg)
+      setCreateError(e?.message || 'Error de servidor. Intenta más tarde.')
     }
   }
 
@@ -364,7 +316,6 @@ export default function Citas() {
         if(!mounted) return
         setPacientesList(Array.isArray(ps)?ps: (ps && ps.value)?ps.value: [])
         setTiposList(Array.isArray(tt)?tt: (tt && tt.value)?tt.value: [])
-        // intentionally DO NOT load terapeutas here; they will be loaded when user selects TipoSesion
         setTerapeutasList([])
         setAvailableDates(new Set())
         setAvailableSlots([])
@@ -382,43 +333,39 @@ export default function Citas() {
 
     const tipo = (tiposList || []).find(t => Number(t.Id ?? t.id) === tipoId)
     let especialidadId = tipo?.EspecialidadId ?? tipo?.especialidadId ?? tipo?.especialidad?.id
-
     if (!especialidadId) {
       try {
         const detalle = await apiFetch(`/api/TipoSesiones/${tipoId}`)
         especialidadId = detalle?.EspecialidadId ?? detalle?.especialidadId ?? detalle?.especialidad?.id
-      } catch (err) {
+      } catch {
         setTerapeutasList([])
         return
       }
     }
-
     try {
       setLoadingTerapeutasCreate(true)
       const terapeutas = await apiFetch(`/api/terapeutas?especialidadId=${especialidadId}`)
       setTerapeutasList(Array.isArray(terapeutas) ? terapeutas : (terapeutas && terapeutas.value) ? terapeutas.value : [])
-    } catch (err) {
+    } catch {
       setTerapeutasList([])
     } finally {
       setLoadingTerapeutasCreate(false)
     }
   }
 
-  // When user chooses a therapist in the create form: fetch available dates for next N days
   async function onTerapeutaChange(e) {
     const terapeutaId = e.target.value === '' ? '' : Number(e.target.value)
     setCreateForm(s => ({ ...s, TerapeutaId: terapeutaId, FechaDate: '', FechaTime: '' }))
     setAvailableSlots([])
     setAvailableDates(new Set())
     setCreateError(null)
-
     if (!terapeutaId) return
 
     try {
       setLoadingAvailableDates(true)
       const start = new Date()
       const end = new Date()
-      end.setDate(start.getDate() + 30) // next 30 days
+      end.setDate(start.getDate() + 30)
       const startIso = toYmdLocal(start)
       const endIso = toYmdLocal(end)
       const url = `/api/franjas/${terapeutaId}/available-dates?start=${startIso}&end=${endIso}&duracion=${createForm.DuracionMinutos || 45}`
@@ -430,7 +377,7 @@ export default function Citas() {
         return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '')
       }).filter(Boolean))
       setAvailableDates(set)
-    } catch (err) {
+    } catch {
       setAvailableDates(new Set())
     } finally {
       setLoadingAvailableDates(false)
@@ -443,12 +390,10 @@ export default function Citas() {
     setCreateForm(s => ({ ...s, FechaDate: dateVal, FechaTime: '' }))
     setAvailableSlots([])
     setCreateError(null)
-
     if (availableDates.size > 0 && !availableDates.has(dateVal)) {
       setCreateError('Fecha no disponible para el terapeuta seleccionado. Elige otra fecha.')
       return
     }
-
     const terapeutaId = createForm.TerapeutaId ? Number(createForm.TerapeutaId) : null
     if (!terapeutaId) return
 
@@ -465,7 +410,7 @@ export default function Citas() {
         return { inicioIso: inicioDate ? formatLocalIso(inicioDate) : null, finIso: finDate ? formatLocalIso(finDate) : null }
       }).filter(s=>s.inicioIso)
       setAvailableSlots(slots)
-    } catch (err) {
+    } catch {
       setAvailableSlots([]) 
     } finally {
       setLoadingSlots(false)
@@ -473,18 +418,15 @@ export default function Citas() {
   }
 
   async function onDateChange(e) {
-    const dateVal = e.target.value // yyyy-mm-dd
+    const dateVal = e.target.value
     setCreateForm(s => ({ ...s, FechaDate: dateVal, FechaTime: '' }))
     setAvailableSlots([])
     setCreateError(null)
-
     if (!dateVal) return
-
     if (availableDates.size > 0 && !availableDates.has(dateVal)) {
       setCreateError('Fecha no disponible para el terapeuta seleccionado. Elige otra fecha.')
       return
     }
-
     const terapeutaId = createForm.TerapeutaId ? Number(createForm.TerapeutaId) : null
     if (!terapeutaId) return
 
@@ -501,14 +443,13 @@ export default function Citas() {
         return { inicioIso: inicioDate ? formatLocalIso(inicioDate) : null, finIso: finDate ? formatLocalIso(finDate) : null }
       }).filter(s=>s.inicioIso)
       setAvailableSlots(slots)
-    } catch (err) {
+    } catch {
       setAvailableSlots([]) 
     } finally {
       setLoadingSlots(false)
     }
   }
 
-  // --- Reprogram availability helpers ---
   async function fetchReprogramAvailableDates(terapeutaId, duracion) {
     if (!terapeutaId) { setReprogramAvailableDates(new Set()); return }
     try {
@@ -527,13 +468,12 @@ export default function Citas() {
         return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '')
       }).filter(Boolean))
       setReprogramAvailableDates(set)
-    } catch (err) {
+    } catch {
       setReprogramAvailableDates(new Set())
     } finally {
       setReprogramLoadingAvailableDates(false)
     }
   }
-
   async function fetchReprogramSlots(terapeutaId, dateVal, duracion) {
     if (!terapeutaId || !dateVal) { setReprogramAvailableSlots([]); return }
     try {
@@ -549,75 +489,54 @@ export default function Citas() {
         return { inicioIso: inicioDate ? formatLocalIso(inicioDate) : null, finIso: finDate ? formatLocalIso(finDate) : null }
       }).filter(s=>s.inicioIso)
       setReprogramAvailableSlots(slots)
-    } catch (err) {
+    } catch {
       setReprogramAvailableSlots([]) 
     } finally {
       setReprogramLoadingSlots(false)
     }
   }
-
   function handleReprogramDaySelect(day) {
     if (!day) return
     const dateVal = toYmdLocal(day)
     setReprogramForm(s => ({ ...s, FechaDate: dateVal, FechaTime: '' }))
     setReprogramAvailableSlots([])
     setReprogramError(null)
-
     if (reprogramAvailableDates.size > 0 && !reprogramAvailableDates.has(dateVal)) {
       setReprogramError('Fecha no disponible para el terapeuta seleccionado. Elige otra fecha.')
       return
     }
-
     const terapeutaId = reprogramItem?.terapeutaId ?? reprogramItem?.raw?.terapeutaId ?? reprogramItem?.raw?.TerapeutaId ?? reprogramItem?.raw?.terapeuta?.id
     if (!terapeutaId) return
-
     fetchReprogramSlots(terapeutaId, dateVal, reprogramForm.DuracionMinutos ?? reprogramItem?.duracion ?? reprogramItem?.raw?.DuracionMinutos ?? 45)
   }
-  // --- end reprogram availability helpers ---
-
-  // --- Reprogram functions ---
   function openReprogramModal(item) {
     const parsed = parseIsoSafe(item.fecha ?? item.raw?.fecha ?? item.raw?.Fecha ?? item.raw?.fechaInicio ?? item.raw?.FechaInicio)
     const ymd = parsed ? toYmdLocal(parsed) : ''
     const hh = parsed ? String(parsed.getHours()).padStart(2,'0') : ''
     const mm = parsed ? String(parsed.getMinutes()).padStart(2,'0') : ''
-    // set FechaTime to a full local ISO so the same parsing logic works if using slots
     const timeVal = parsed ? formatLocalIso(parsed) : (hh && mm ? `${hh}:${mm}` : '')
     setReprogramForm({ FechaDate: ymd, FechaTime: timeVal, DuracionMinutos: item.duracion ?? item.raw?.DuracionMinutos ?? item.duracion ?? null })
     setReprogramItem(item)
     setReprogramError(null)
     setReprogramAvailableSlots([])
     setReprogramAvailableDates(new Set())
-
-    // prefetch availability for that therapist
     const terapeutaId = item.terapeutaId ?? item.raw?.terapeutaId ?? item.raw?.TerapeutaId ?? item.raw?.terapeuta?.id
     const dur = item.duracion ?? item.raw?.DuracionMinutos ?? reprogramForm.DuracionMinutos ?? 45
     if (terapeutaId) {
       fetchReprogramAvailableDates(terapeutaId, dur).then(() => {
-        if (ymd) {
-          fetchReprogramSlots(terapeutaId, ymd, dur)
-        }
+        if (ymd) fetchReprogramSlots(terapeutaId, ymd, dur)
       })
     }
     setShowReprogram(true)
   }
-
-  function handleEdit(item) {
-    // renamed behavior: edit => reprogram
-    openReprogramModal(item)
-  }
-
-  function handleView(item) {
-    setViewItem(item)
-    setShowView(true)
-  }
+  function handleEdit(item) { openReprogramModal(item) }
+  function handleView(item) { setViewItem(item); setShowView(true) }
 
   async function handleReprogramSubmit(e) {
     e?.preventDefault?.()
     setReprogramError(null)
     if (!reprogramItem) return setReprogramError('Item inválido')
     if (!reprogramForm.FechaDate || !reprogramForm.FechaTime) return setReprogramError('Seleccione fecha y hora')
-
     setReprogramLoading(true)
     try {
       let fechaLocalIso
@@ -628,124 +547,59 @@ export default function Citas() {
       } else {
         fechaLocalIso = buildIsoFromLocalYmdAndTime(reprogramForm.FechaDate, reprogramForm.FechaTime)
       }
-
-      const payload = {
-        Fecha: fechaLocalIso,
-        // only include DuracionMinutos if provided (allows unchanged)
-        ...(reprogramForm.DuracionMinutos ? { DuracionMinutos: Number(reprogramForm.DuracionMinutos) } : {})
-      }
-
-      // Use apiFetch if present
-      let result = null
-      if (typeof apiFetch === 'function') {
-        const r = await apiFetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', body: payload })
-        // some apiFetch wrappers return the parsed body, some return Response-like; handle both
-        result = (r && r.ok === false) ? null : r
-      } else {
-        const res = await fetch(`/api/citas/${reprogramItem.id}/reprogramar`, {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        if (res.status === 401) throw new Error('No autorizado (401)')
-        if (!res.ok) {
-          const txt = await res.text().catch(()=>null)
-          throw new Error(txt || ('HTTP ' + res.status))
-        }
-        try { result = await res.json() } catch { result = null }
-      }
-
-      // Normalize response (some backends return the updated resource)
+      const payload = { Fecha: fechaLocalIso, ...(reprogramForm.DuracionMinutos ? { DuracionMinutos: Number(reprogramForm.DuracionMinutos) } : {} ) }
+      let result = await apiFetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', body: payload }).catch(async () => {
+        const res = await fetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+        return res.json().catch(()=>null)
+      })
       const normalized = normalizeCitas(Array.isArray(result) ? result : result ? [result] : [])
       if (normalized.length > 0) {
         const updated = normalized[0]
         setItems(prev => (prev || []).map(i => i.id === updated.id ? updated : i))
       } else {
-        // fallback: reload list
         const r = await apiFetch('/api/citas')
-        const raw = Array.isArray(r) ? r : (r && r.value) ? r.value : r
-        setItems(normalizeCitas(raw))
+        setItems(normalizeCitas(Array.isArray(r) ? r : r))
       }
-
       alert('Cita reprogramada correctamente.')
       setShowReprogram(false)
       setReprogramItem(null)
       setReprogramAvailableDates(new Set())
-      setReprogramAvailableSlots([]) 
+      setReprogramAvailableSlots([])
     } catch (err) {
-      console.error('[Citas] reprogram error', err)
       setReprogramError(err?.message || 'Error al reprogramar. Intenta más tarde.')
     } finally {
       setReprogramLoading(false)
     }
   }
-  // --- end Reprogram functions --- 
 
-  const modifiers = {
-    available: (date) => {
-      if (!availableDates || availableDates.size === 0) return false
-      return availableDates.has(toYmdLocal(date))
-    }
-  }
+  const modifiers = { available: (date) => (availableDates?.size || 0) > 0 && availableDates.has(toYmdLocal(date)) }
   const modifiersClassNames = { available: 'available-day' }
-  const disabled = (day) => {
-    if (!availableDates || availableDates.size === 0) return false
-    return !availableDates.has(toYmdLocal(day))
-  }
-
-  const reprogramModifiers = {
-    available: (date) => {
-      if (!reprogramAvailableDates || reprogramAvailableDates.size === 0) return false
-      return reprogramAvailableDates.has(toYmdLocal(date))
-    }
-  }
-  const reprogramDisabled = (day) => {
-    if (!reprogramAvailableDates || reprogramAvailableDates.size === 0) return false
-    return !reprogramAvailableDates.has(toYmdLocal(day))
-  }
-
-  if (loading) return <div className="card"><div className="spinner" /></div>
-  if (error) return <div className="error">Error: {error}</div>
-  if (!items || items.length === 0) return <div className="card">No hay citas</div>
+  const disabled = (day) => (availableDates?.size || 0) > 0 && !availableDates.has(toYmdLocal(day))
+  const reprogramModifiers = { available: (date) => (reprogramAvailableDates?.size || 0) > 0 && reprogramAvailableDates.has(toYmdLocal(date)) }
+  const reprogramDisabled = (day) => (reprogramAvailableDates?.size || 0) > 0 && !reprogramAvailableDates.has(toYmdLocal(day))
 
   return (
     <>
       <style>{`
-        /* Pastel availability day */
         .available-day { background:#f0fff4 !important; border-bottom:3px solid #7bd389 !important; color:#0b5d37 !important; }
-
-        /* Card: softer, more spacious, rounded */
         .card { background: linear-gradient(180deg,#fffafc 0%,#f7fff9 100%); border:1px solid rgba(20,20,20,0.04); padding:16px; border-radius:12px; margin-bottom:14px; box-shadow:0 6px 18px rgba(29,33,49,0.04); display:flex; flex-direction:column; gap:10px; }
-
         .card h3 { margin:0; font-size:1.05rem; color:#222; }
         .cita-title { margin:0 0 14px 0; font-size:1rem; font-weight:600; color:#24303a; line-height:1.2; }
         .patient { display:block; margin-top:12px; margin-bottom:10px; font-weight:600; color:#333; font-size:0.98rem; }
-        /* Make spacing between Tipo de Sesión and Terapeuta equal to fecha->Paciente (14px) */
         .session-row { margin-top:0; margin-bottom:14px; }
         .session-type { color:#5f6b6f; font-size:0.92rem; display:block; }
-
-        /* Meta row layout and muted text */
         .meta-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:0; }
         .meta-row small { color:#6b6b6b; background:transparent; padding:2px 6px; border-radius:6px; }
-
-        /* Status pill: pastel variant */
         .status-pill { background:#e8f3ff; color:#175f9c; padding:6px 10px; border-radius:999px; display:inline-block; font-size:13px; font-weight:600; border:1px solid rgba(23,95,156,0.12); }
-
-        /* Buttons: pastel, softer hover */
         .btn { background:#ffdce6; color:#5a2130; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; box-shadow:0 1px 0 rgba(0,0,0,0.03); }
         .btn:hover { transform:translateY(-1px); }
         .btn.ghost { background:transparent; border:1px solid rgba(43,43,43,0.06); color:#3b3b3b; }
         .btn.small { padding:6px 8px; font-size:13px; border-radius:6px; }
-
-        /* Inputs and form grid */
         .input { width:100%; padding:10px; border-radius:8px; border:1px solid rgba(0,0,0,0.06); box-sizing:border-box; background:#fff; }
-        /* Make form fields stack vertically for clearer layout */
         .form-grid { display:grid; gap:12px; grid-template-columns: 1fr; }
         @media (max-width:800px) { .form-grid { grid-template-columns: 1fr } }
-
         .muted { color:#7a7a7a; font-size:0.9rem; }
-        /* Estilo específico para botón Anular — versión 'danger' más visible */
         .btn.cancel { background:#dc2626; color:#fff; border:1px solid rgba(139,10,10,0.15); box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
         .btn.cancel:hover { transform:translateY(-1px); filter:brightness(0.95); }
         .btn.small.cancel { padding:6px 8px; font-size:13px; }
@@ -759,16 +613,22 @@ export default function Citas() {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
           <h2>Citas</h2>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <input 
-              placeholder="Buscar por paciente, terapeuta, tipo, especialidad, estado o fecha" 
-              className="input" 
-              style={{width:420}} 
-              value={search} 
-              onChange={e=>setSearch(e.target.value)} 
+            <input
+              placeholder="Buscar por paciente, terapeuta, tipo, especialidad, estado o fecha"
+              className="input"
+              style={{width:420}}
+              value={search}
+              onChange={e=>setSearch(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
             />
             <button className="btn" onClick={()=>setShowCreate(true)}>Nueva Cita</button>
           </div>
         </div>
+
+        {loading && <div style={{ marginTop: 8 }} className="muted">Filtrando...</div>}
+        {error && <div className="error" style={{ marginTop: 8 }}>Error: {error}</div>}
+
         <div style={{ marginTop: 12 }}>
           {showCreate && (
             <Modal title="Nueva Cita" onClose={()=>{ setShowCreate(false); setCreateError(null) }}>
@@ -924,7 +784,10 @@ export default function Citas() {
             </Modal>
           )}
 
-          {items.map((c) => (
+          {/* Lista de citas */}
+          {items === null && <div className="card"><div className="spinner" /></div>}
+          {items && items.length === 0 && <div className="card">No hay citas</div>}
+          {items && items.length > 0 && items.map((c) => (
             <div className="card" key={c.id ?? JSON.stringify(c)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -944,7 +807,7 @@ export default function Citas() {
                   <div style={{ marginTop: 8 }}>
                     <button className="btn small" onClick={() => handleView(c)}>Ver</button>
                     {canReprogramEstado(c.estado) && (
-                      <button className="btn small" onClick={() => handleEdit(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
+                      <button className="btn small" onClick={() => openReprogramModal(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
                     )}
                     <button
                       className="btn small cancel"
@@ -960,16 +823,13 @@ export default function Citas() {
               </div>
 
               <div style={{ height: 4 }} />
-
               <div className="meta-row">
                 <small>
                   Terapeuta: {c.terapeutaNombre || c.raw?.TerapeutaNombre || c.raw?.terapeutaNombre || (c.raw?.terapeuta ? ((c.raw.terapeuta.Nombres || c.raw.terapeuta.nombres || '') + ' ' + (c.raw.terapeuta.Apellidos || c.raw.terapeuta.apellidos || '')).trim() : '—')}
                 </small>
                 <small style={{ marginLeft: 12 }}>Duración: {(c.duracion ?? c.raw?.DuracionMinutos ?? c.raw?.duracionMinutos) ?? '—'} min</small>
-                <small style={{ marginLeft: 12 }}>Precio: { (c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? (c.raw?.tipoSesion?.precio)) != null ? (c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? c.raw?.tipoSesion?.precio) : '—'}</small>
+                <small style={{ marginLeft: 12 }}>Precio: {(c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? (c.raw?.tipoSesion?.precio)) != null ? (c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? c.raw?.tipoSesion?.precio) : '—'}</small>
               </div>
-
-              {/* Observaciones ocultas en la tarjeta según petición */}
             </div>
           ))}
         </div>
