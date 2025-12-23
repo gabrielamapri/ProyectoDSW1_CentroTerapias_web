@@ -6,6 +6,7 @@ export default function TipoSesiones(){
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(()=>{
     const endpoints = ['/api/tiposesiones','/api/tiposSesiones','/api/tipos-sesiones','/api/tipoSesiones','/api/TipoSesiones']
@@ -13,7 +14,8 @@ export default function TipoSesiones(){
     ;(async()=>{
       for(const ep of endpoints){
         try{
-          const res = await apiFetch(ep)
+          const url = search ? `${ep}?search=${encodeURIComponent(search)}` : ep
+          const res = await apiFetch(url)
           if(!mounted) return
           if(Array.isArray(res)) { setItems(res); return }
         }catch(e){}
@@ -21,9 +23,13 @@ export default function TipoSesiones(){
       setError('No se pudo cargar tipos de sesión')
     })()
     return ()=> mounted = false
-  },[])
+  },[search])
 
-  async function refresh(){ const res = await apiFetch('/api/tiposesiones'); setItems(res) }
+  async function refresh(){ 
+    const url = search ? `/api/tiposesiones?search=${encodeURIComponent(search)}` : '/api/tiposesiones'
+    const res = await apiFetch(url)
+    setItems(res)
+  }
 
   async function handleDelete(it){
     const id = it.id ?? it.Id
@@ -42,9 +48,18 @@ export default function TipoSesiones(){
 
   return (
     <section>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Tipos de Sesión</h2>
-        <button className="btn" onClick={()=>setEditing({})}>Nuevo Tipo</button>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <input 
+            placeholder="Buscar por nombre" 
+            className="input" 
+            style={{width:280}} 
+            value={search} 
+            onChange={e=>setSearch(e.target.value)} 
+          />
+          <button className="btn" onClick={()=>setEditing({})}>Nuevo Tipo</button>
+        </div>
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">

@@ -7,6 +7,7 @@ export default function Familias({ selectedId = null, openCreate = false }){
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
   const [expandedIds, setExpandedIds] = useState({})
+  const [search, setSearch] = useState('')
 
   useEffect(()=>{
     let mounted = true
@@ -17,7 +18,8 @@ export default function Familias({ selectedId = null, openCreate = false }){
           if(!mounted) return
           setItems([one])
         } else {
-          const res = await apiFetch('/api/familias')
+          const url = search ? `/api/familias?search=${encodeURIComponent(search)}` : '/api/familias'
+          const res = await apiFetch(url)
           if(!mounted) return
           setItems(res)
         }
@@ -25,7 +27,7 @@ export default function Familias({ selectedId = null, openCreate = false }){
     }
     load()
     return ()=> mounted = false
-  },[selectedId])
+  },[selectedId, search])
 
   useEffect(()=>{
     if(openCreate) setEditing({})
@@ -95,7 +97,11 @@ export default function Familias({ selectedId = null, openCreate = false }){
     }).sort()
   }
 
-  async function refresh(){ const res = await apiFetch('/api/familias'); setItems(res) }
+  async function refresh(){ 
+    const url = search ? `/api/familias?search=${encodeURIComponent(search)}` : '/api/familias'
+    const res = await apiFetch(url)
+    setItems(res) 
+  }
 
   async function handleDelete(it){
     const id = it.id ?? it.Id
@@ -116,7 +122,17 @@ export default function Familias({ selectedId = null, openCreate = false }){
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <h2>Familias</h2>
-        <button className="btn" onClick={()=>setEditing({})}>Nueva Familia</button>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <input 
+            type="text" 
+            className="input" 
+            placeholder="Buscar por nombre, apellido o DNI..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)}
+            style={{width:380}}
+          />
+          <button className="btn" onClick={()=>setEditing({})}>Nueva Familia</button>
+        </div>
       </div>
 
       <div className="list" style={{marginTop:12,display:'grid',gap:12}}>

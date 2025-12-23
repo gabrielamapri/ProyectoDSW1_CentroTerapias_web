@@ -20,6 +20,7 @@ export default function Citas() {
   const [terapeutasList, setTerapeutasList] = useState([])
   const [tiposList, setTiposList] = useState([])
   const [loadingTerapeutasCreate, setLoadingTerapeutasCreate] = useState(false)
+  const [search, setSearch] = useState('')
 
   // Reprogram state
   const [showReprogram, setShowReprogram] = useState(false)
@@ -225,7 +226,8 @@ export default function Citas() {
         let raw = null
         if (typeof apiFetch === 'function') {
           try {
-            const r = await apiFetch('/api/citas')
+            const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
+            const r = await apiFetch(url)
             raw = await safeParse(r)
             console.debug('[Citas] apiFetch result', raw)
           } catch (e) {
@@ -234,8 +236,7 @@ export default function Citas() {
         }
 
         if (raw == null) {
-          const rel = '/api/citas'
-          const url = rel
+          const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
           console.debug('[Citas] fallback fetch ->', url)
           const res = await fetch(url, { credentials: 'include', signal: controller.signal })
           if (res.status === 401) {
@@ -269,7 +270,7 @@ export default function Citas() {
       console.debug('[Citas] unmount — aborting fetch')
       controller.abort()
     }
-  }, [])
+  }, [search])
 
   async function handleCancel(item) {
     if (!confirm('Anular cita?')) return
@@ -755,9 +756,16 @@ export default function Citas() {
       `}</style>
 
       <section>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
           <h2>Citas</h2>
-          <div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input 
+              placeholder="Buscar por paciente, terapeuta, tipo, especialidad, estado o fecha" 
+              className="input" 
+              style={{width:420}} 
+              value={search} 
+              onChange={e=>setSearch(e.target.value)} 
+            />
             <button className="btn" onClick={()=>setShowCreate(true)}>Nueva Cita</button>
           </div>
         </div>

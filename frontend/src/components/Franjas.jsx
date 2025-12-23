@@ -7,13 +7,24 @@ export default function Franjas(){
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
   const [therapists,setTherapists] = useState([])
+  const [search, setSearch] = useState('')
 
   const dayNames = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 
-  useEffect(()=>{ apiFetch('/api/franjas').then(setItems).catch(e=>setError(e.message||String(e))) },[])
+  useEffect(()=>{ 
+    const url = search ? `/api/franjas?search=${encodeURIComponent(search)}` : '/api/franjas'
+    apiFetch(url).then(setItems).catch(e=>setError(e.message||String(e))) 
+  },[search])
+  
   useEffect(()=>{ apiFetch('/api/terapeutas').then(setTherapists).catch(()=>setTherapists([])) },[])
 
-  async function refresh(){ try{ const res = await apiFetch('/api/franjas'); setItems(res) }catch(e){ setError(e.message||String(e)) } }
+  async function refresh(){ 
+    try{ 
+      const url = search ? `/api/franjas?search=${encodeURIComponent(search)}` : '/api/franjas'
+      const res = await apiFetch(url)
+      setItems(res) 
+    }catch(e){ setError(e.message||String(e)) } 
+  }
 
   async function handleDelete(it){
     const id = it.id ?? it.Id
@@ -192,7 +203,16 @@ export default function Franjas(){
     <section style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>Franjas de Disponibilidad</h2>
-        <button style={{...styles.btn, ...styles.btnPrimary}} onClick={openNew}>Nueva Franja</button>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <input 
+            placeholder="Buscar por terapeuta, fecha o días" 
+            className="input" 
+            style={{width:320,padding:'8px 12px',borderRadius:6,border:'1px solid #e6e9ef'}} 
+            value={search} 
+            onChange={e=>setSearch(e.target.value)} 
+          />
+          <button style={{...styles.btn, ...styles.btnPrimary}} onClick={openNew}>Nueva Franja</button>
+        </div>
       </div>
 
       <div style={{marginTop:12}} className="card">

@@ -6,13 +6,16 @@ export default function Especialidades(){
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(()=>{
-    apiFetch('/api/especialidades').then(setItems).catch(e=>setError(e.message))
-  },[])
+    const url = search ? `/api/especialidades?search=${encodeURIComponent(search)}` : '/api/especialidades'
+    apiFetch(url).then(setItems).catch(e=>setError(e.message))
+  },[search])
 
   async function refresh(){
-    const res = await apiFetch('/api/especialidades')
+    const url = search ? `/api/especialidades?search=${encodeURIComponent(search)}` : '/api/especialidades'
+    const res = await apiFetch(url)
     setItems(res)
   }
 
@@ -40,9 +43,18 @@ export default function Especialidades(){
 
   return (
     <section>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Especialidades</h2>
-        <button className="btn" onClick={()=>setEditing({})}>Nueva Especialidad</button>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <input 
+            placeholder="Buscar por nombre" 
+            className="input" 
+            style={{width:280}} 
+            value={search} 
+            onChange={e=>setSearch(e.target.value)} 
+          />
+          <button className="btn" onClick={()=>setEditing({})}>Nueva Especialidad</button>
+        </div>
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
