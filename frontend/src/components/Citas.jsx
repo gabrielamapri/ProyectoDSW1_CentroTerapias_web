@@ -21,11 +21,24 @@ export default function Citas() {
   const [tiposList, setTiposList] = useState([])
   const [loadingTerapeutasCreate, setLoadingTerapeutasCreate] = useState(false)
 
-  // availability states
+  // Reprogram state
+  const [showReprogram, setShowReprogram] = useState(false)
+  const [reprogramForm, setReprogramForm] = useState({ FechaDate: '', FechaTime: '', DuracionMinutos: null })
+  const [reprogramError, setReprogramError] = useState(null)
+  const [reprogramLoading, setReprogramLoading] = useState(false)
+  const [reprogramItem, setReprogramItem] = useState(null)
+
+  // availability states for create
   const [availableDates, setAvailableDates] = useState(new Set()) // store yyyy-mm-dd strings (local)
   const [loadingAvailableDates, setLoadingAvailableDates] = useState(false)
   const [availableSlots, setAvailableSlots] = useState([]) // [{inicioIso, finIso}]
   const [loadingSlots, setLoadingSlots] = useState(false)
+
+  // availability states for reprogram (separados para evitar colisiones)
+  const [reprogramAvailableDates, setReprogramAvailableDates] = useState(new Set())
+  const [reprogramLoadingAvailableDates, setReprogramLoadingAvailableDates] = useState(false)
+  const [reprogramAvailableSlots, setReprogramAvailableSlots] = useState([])
+  const [reprogramLoadingSlots, setReprogramLoadingSlots] = useState(false)
 
   // Helpers for local yyyy-mm-dd (avoid timezone shifts)
   function toYmdLocal(d) {
@@ -82,6 +95,20 @@ export default function Citas() {
     // Fallback
     const d = new Date(str)
     return isNaN(d.getTime()) ? null : d
+  }
+
+  // Extract HH:mm from ISO string or time value (for type="time" inputs)
+  function extractTimeHHMM(value) {
+    if (!value) return ''
+    // If already in HH:mm format, return as-is
+    if (/^\d{2}:\d{2}$/.test(value)) return value
+    // If ISO or contains 'T', parse and extract time
+    if (value.includes('T') || value.includes('-')) {
+      const d = parseIsoSafe(value)
+      if (!d) return ''
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    }
+    return value
   }
 
   function formatTime(iso) {
@@ -220,35 +247,32 @@ export default function Citas() {
   }, [])
 
   async function handleCancel(item) {
-    if (!confirm('Cancelar cita?')) return
+    if (!confirm('Anular cita?')) return
     try {
-      setItems(prev => prev.filter(i => i.id !== item.id))
+      // Optimistic UI:Mark as processing
+      setItems(prev => (prev || []).map(i => i.id === item.id ? { ...i, estado: 'Anulando...' } : i))
 
-      let resOk = false
       if (typeof apiFetch === 'function') {
-        const r = await apiFetch(`/api/citas/${item.id}`, { method: 'DELETE' })
-        if (r && r.ok === false) {
-          throw new Error('Error al cancelar (apiFetch)')
-        }
-        resOk = true
+        await apiFetch(`/api/citas/${item.id}/cancelar`, { method: 'PATCH' })
       } else {
-        const url = `/api/citas/${item.id}`
-        const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+        const res = await fetch(`/api/citas/${item.id}/cancelar`, { method: 'PATCH', credentials: 'include' })
         if (res.status === 401) throw new Error('No autorizado (401)')
-        if (!res.ok) throw new Error('HTTP ' + res.status)
-        resOk = true
+        if (!res.ok) {
+          const txt = await res.text().catch(()=>null)
+          throw new Error(txt || ('HTTP ' + res.status))
+        }
       }
 
-      if (!resOk) throw new Error('No se pudo cancelar')
+      // Update local list: mark as cancelled (backend uses "Cancelled")
+      setItems(prev => (prev || []).map(i => i.id === item.id ? { ...i, estado: 'Cancelled' } : i))
     } catch (e) {
-      alert('Error al cancelar: ' + (e.message || String(e)))
+      alert('Error al anular: ' + (e.message || String(e)))
       try {
-        const res = await (typeof apiFetch === 'function' ? apiFetch('/api/citas') : fetch('/api/citas', { credentials: 'include' }))
-        const raw = (res && typeof res.json === 'function') ? await res.json() : res
+        const r = await (typeof apiFetch === 'function' ? apiFetch('/api/citas') : fetch('/api/citas', { credentials: 'include' }))
+        const raw = (r && typeof r.json === 'function') ? await r.json() : r
         const normalized = normalizeCitas(Array.isArray(raw) ? raw : raw)
         setItems(normalized)
-      } catch {
-      }
+      } catch {}
     }
   }
 
@@ -458,16 +482,178 @@ export default function Citas() {
     }
   }
 
-  function handleView(item) {
-    alert('Ver cita: ' + (item.id ?? JSON.stringify(item)))
-  }
-  function handleEdit(item) {
-    alert('Editar cita: ' + (item.id ?? JSON.stringify(item)))
+  // --- Reprogram availability helpers ---
+  async function fetchReprogramAvailableDates(terapeutaId, duracion) {
+    if (!terapeutaId) { setReprogramAvailableDates(new Set()); return }
+    try {
+      setReprogramLoadingAvailableDates(true)
+      const start = new Date()
+      const end = new Date()
+      end.setDate(start.getDate() + 30)
+      const startIso = toYmdLocal(start)
+      const endIso = toYmdLocal(end)
+      const url = `/api/franjas/${terapeutaId}/available-dates?start=${startIso}&end=${endIso}&duracion=${duracion || 45}`
+      const res = await apiFetch(url)
+      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : []
+      const set = new Set((arr || []).map(s => {
+        if (!s) return ''
+        const d = parseIsoSafe(typeof s === 'string' ? s : s.Fecha ?? s.fecha ?? s)
+        return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '')
+      }).filter(Boolean))
+      setReprogramAvailableDates(set)
+    } catch (err) {
+      setReprogramAvailableDates(new Set())
+    } finally {
+      setReprogramLoadingAvailableDates(false)
+    }
   }
 
-  if (loading) return <div className="card"><div className="spinner" /></div>
-  if (error) return <div className="error">Error: {error}</div>
-  if (!items || items.length === 0) return <div className="card">No hay citas</div>
+  async function fetchReprogramSlots(terapeutaId, dateVal, duracion) {
+    if (!terapeutaId || !dateVal) { setReprogramAvailableSlots([]); return }
+    try {
+      setReprogramLoadingSlots(true)
+      const url = `/api/franjas/${terapeutaId}/slots?date=${dateVal}&duracion=${duracion || 45}`
+      const res = await apiFetch(url)
+      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : []
+      const slots = (arr || []).map(s => {
+        const rawInicio = s.inicio ?? s.Inicio ?? s.inicioIso ?? s.InicioIso ?? s.fecha ?? s.Fecha ?? s.inicioUtc ?? s.InicioUtc ?? s.inicioHora
+        const rawFin = s.fin ?? s.Fin ?? s.finIso ?? s.FinIso ?? null
+        const inicioDate = parseIsoSafe(rawInicio)
+        const finDate = parseIsoSafe(rawFin)
+        return { inicioIso: inicioDate ? formatLocalIso(inicioDate) : null, finIso: finDate ? formatLocalIso(finDate) : null }
+      }).filter(s=>s.inicioIso)
+      setReprogramAvailableSlots(slots)
+    } catch (err) {
+      setReprogramAvailableSlots([]) 
+    } finally {
+      setReprogramLoadingSlots(false)
+    }
+  }
+
+  function handleReprogramDaySelect(day) {
+    if (!day) return
+    const dateVal = toYmdLocal(day)
+    setReprogramForm(s => ({ ...s, FechaDate: dateVal, FechaTime: '' }))
+    setReprogramAvailableSlots([])
+    setReprogramError(null)
+
+    if (reprogramAvailableDates.size > 0 && !reprogramAvailableDates.has(dateVal)) {
+      setReprogramError('Fecha no disponible para el terapeuta seleccionado. Elige otra fecha.')
+      return
+    }
+
+    const terapeutaId = reprogramItem?.terapeutaId ?? reprogramItem?.raw?.terapeutaId ?? reprogramItem?.raw?.TerapeutaId ?? reprogramItem?.raw?.terapeuta?.id
+    if (!terapeutaId) return
+
+    fetchReprogramSlots(terapeutaId, dateVal, reprogramForm.DuracionMinutos ?? reprogramItem?.duracion ?? reprogramItem?.raw?.DuracionMinutos ?? 45)
+  }
+  // --- end reprogram availability helpers ---
+
+  // --- Reprogram functions ---
+  function openReprogramModal(item) {
+    const parsed = parseIsoSafe(item.fecha ?? item.raw?.fecha ?? item.raw?.Fecha ?? item.raw?.fechaInicio ?? item.raw?.FechaInicio)
+    const ymd = parsed ? toYmdLocal(parsed) : ''
+    const hh = parsed ? String(parsed.getHours()).padStart(2,'0') : ''
+    const mm = parsed ? String(parsed.getMinutes()).padStart(2,'0') : ''
+    // set FechaTime to a full local ISO so the same parsing logic works if using slots
+    const timeVal = parsed ? formatLocalIso(parsed) : (hh && mm ? `${hh}:${mm}` : '')
+    setReprogramForm({ FechaDate: ymd, FechaTime: timeVal, DuracionMinutos: item.duracion ?? item.raw?.DuracionMinutos ?? item.duracion ?? null })
+    setReprogramItem(item)
+    setReprogramError(null)
+    setReprogramAvailableSlots([])
+    setReprogramAvailableDates(new Set())
+
+    // prefetch availability for that therapist
+    const terapeutaId = item.terapeutaId ?? item.raw?.terapeutaId ?? item.raw?.TerapeutaId ?? item.raw?.terapeuta?.id
+    const dur = item.duracion ?? item.raw?.DuracionMinutos ?? reprogramForm.DuracionMinutos ?? 45
+    if (terapeutaId) {
+      fetchReprogramAvailableDates(terapeutaId, dur).then(() => {
+        if (ymd) {
+          fetchReprogramSlots(terapeutaId, ymd, dur)
+        }
+      })
+    }
+    setShowReprogram(true)
+  }
+
+  function handleEdit(item) {
+    // renamed behavior: edit => reprogram
+    openReprogramModal(item)
+  }
+
+  function handleView(item) {
+    alert(`Ver cita #${item.id}\nPaciente: ${item.pacienteNombre}\nFecha: ${item.fecha ? parseIsoSafe(item.fecha)?.toLocaleString() : '—'}\nEstado: ${item.estado}`)
+  }
+
+  async function handleReprogramSubmit(e) {
+    e?.preventDefault?.()
+    setReprogramError(null)
+    if (!reprogramItem) return setReprogramError('Item inválido')
+    if (!reprogramForm.FechaDate || !reprogramForm.FechaTime) return setReprogramError('Seleccione fecha y hora')
+
+    setReprogramLoading(true)
+    try {
+      let fechaLocalIso
+      if (reprogramForm.FechaTime && (reprogramForm.FechaTime.includes('T') || reprogramForm.FechaTime.includes('-'))) {
+        const parsed = parseIsoSafe(reprogramForm.FechaTime)
+        if (!parsed) return setReprogramError('Fecha inválida')
+        fechaLocalIso = formatLocalIso(parsed)
+      } else {
+        fechaLocalIso = buildIsoFromLocalYmdAndTime(reprogramForm.FechaDate, reprogramForm.FechaTime)
+      }
+
+      const payload = {
+        Fecha: fechaLocalIso,
+        // only include DuracionMinutos if provided (allows unchanged)
+        ...(reprogramForm.DuracionMinutos ? { DuracionMinutos: Number(reprogramForm.DuracionMinutos) } : {})
+      }
+
+      // Use apiFetch if present
+      let result = null
+      if (typeof apiFetch === 'function') {
+        const r = await apiFetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', body: payload })
+        // some apiFetch wrappers return the parsed body, some return Response-like; handle both
+        result = (r && r.ok === false) ? null : r
+      } else {
+        const res = await fetch(`/api/citas/${reprogramItem.id}/reprogramar`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        if (res.status === 401) throw new Error('No autorizado (401)')
+        if (!res.ok) {
+          const txt = await res.text().catch(()=>null)
+          throw new Error(txt || ('HTTP ' + res.status))
+        }
+        try { result = await res.json() } catch { result = null }
+      }
+
+      // Normalize response (some backends return the updated resource)
+      const normalized = normalizeCitas(Array.isArray(result) ? result : result ? [result] : [])
+      if (normalized.length > 0) {
+        const updated = normalized[0]
+        setItems(prev => (prev || []).map(i => i.id === updated.id ? updated : i))
+      } else {
+        // fallback: reload list
+        const r = await apiFetch('/api/citas')
+        const raw = Array.isArray(r) ? r : (r && r.value) ? r.value : r
+        setItems(normalizeCitas(raw))
+      }
+
+      alert('Cita reprogramada correctamente.')
+      setShowReprogram(false)
+      setReprogramItem(null)
+      setReprogramAvailableDates(new Set())
+      setReprogramAvailableSlots([]) 
+    } catch (err) {
+      console.error('[Citas] reprogram error', err)
+      setReprogramError(err?.message || 'Error al reprogramar. Intenta más tarde.')
+    } finally {
+      setReprogramLoading(false)
+    }
+  }
+  // --- end Reprogram functions --- 
 
   const modifiers = {
     available: (date) => {
@@ -480,6 +666,21 @@ export default function Citas() {
     if (!availableDates || availableDates.size === 0) return false
     return !availableDates.has(toYmdLocal(day))
   }
+
+  const reprogramModifiers = {
+    available: (date) => {
+      if (!reprogramAvailableDates || reprogramAvailableDates.size === 0) return false
+      return reprogramAvailableDates.has(toYmdLocal(date))
+    }
+  }
+  const reprogramDisabled = (day) => {
+    if (!reprogramAvailableDates || reprogramAvailableDates.size === 0) return false
+    return !reprogramAvailableDates.has(toYmdLocal(day))
+  }
+
+  if (loading) return <div className="card"><div className="spinner" /></div>
+  if (error) return <div className="error">Error: {error}</div>
+  if (!items || items.length === 0) return <div className="card">No hay citas</div>
 
   return (
     <>
@@ -531,14 +732,14 @@ export default function Citas() {
             <Modal title="Nueva Cita" onClose={()=>{ setShowCreate(false); setCreateError(null) }}>
               <form onSubmit={e=>{ e.preventDefault(); handleCreateSubmit() }}>
                 <div className="form-grid">
-                  <select className="input" value={createForm.PacienteId} onChange={e=>setCreateForm(s=>({...s,PacienteId: e.target.value === '' ? '' : Number(e.target.value)}))}>
+                  <select className="input" value={createForm.PacienteId || ''} onChange={e=>setCreateForm(s=>({...s,PacienteId: e.target.value === '' ? '' : Number(e.target.value)}))}>
                     <option value="">Seleccione paciente</option>
                     {(pacientesList||[]).map(p=> (
                       <option key={p.Id ?? p.id} value={p.Id ?? p.id}>{(p.Nombres || p.nombres || p.nombre || '') + ' ' + (p.Apellidos || p.apellidos || '')}</option>
                     ))}
                   </select>
 
-                  <select className="input" value={createForm.TipoSesionId} onChange={onTipoSesionChange}>
+                  <select className="input" value={createForm.TipoSesionId || ''} onChange={onTipoSesionChange}>
                     <option value="">Seleccione tipo de sesión</option>
                     {(tiposList||[]).map(ts=> (
                       <option key={ts.Id ?? ts.id} value={ts.Id ?? ts.id}>{ts.Nombre ?? ts.nombre ?? ts.name}</option>
@@ -547,7 +748,7 @@ export default function Citas() {
 
                   <select
                     className="input"
-                    value={createForm.TerapeutaId}
+                    value={createForm.TerapeutaId || ''}
                     onChange={onTerapeutaChange}
                     disabled={!createForm.TipoSesionId || loadingTerapeutasCreate}
                   >
@@ -575,20 +776,20 @@ export default function Citas() {
                     <div style={{ width: '100%' }}>
                       {loadingSlots ? <div style={{ padding: 8 }}>Cargando horarios...</div> : null}
                       {!loadingSlots && availableSlots && availableSlots.length>0 ? (
-                        <select className="input" value={createForm.FechaTime} onChange={e=>setCreateForm(s=>({...s,FechaTime:e.target.value}))}>
+                        <select className="input" value={createForm.FechaTime || ''} onChange={e=>setCreateForm(s=>({...s,FechaTime:e.target.value}))}>
                           <option value="">Seleccione hora</option>
                           {availableSlots.map(s=>(
                             <option key={s.inicioIso} value={s.inicioIso}>{formatTime(s.inicioIso)}{s.finIso ? ' - ' + formatTime(s.finIso) : ''}</option>
                           ))}
                         </select>
                       ) : (
-                        <input type="time" className="input" value={createForm.FechaTime} onChange={e=>setCreateForm(s=>({...s,FechaTime:e.target.value}))} disabled={!createForm.FechaDate || loadingSlots} />
+                        <input type="time" className="input" value={extractTimeHHMM(createForm.FechaTime)} onChange={e=>setCreateForm(s=>({...s,FechaTime:e.target.value}))} disabled={!createForm.FechaDate || loadingSlots} />
                       )}
                     </div>
                   </div>
 
-                  <input type="number" className="input" value={createForm.DuracionMinutos} onChange={e=>setCreateForm(s=>({...s,DuracionMinutos:Number(e.target.value)}))} />
-                  <input className="input" placeholder="Motivo" value={createForm.Motivo} onChange={e=>setCreateForm(s=>({...s,Motivo:e.target.value}))} />
+                  <input type="number" className="input" value={createForm.DuracionMinutos || ''} onChange={e=>setCreateForm(s=>({...s,DuracionMinutos:Number(e.target.value)}))} />
+                  <input className="input" placeholder="Motivo" value={createForm.Motivo || ''} onChange={e=>setCreateForm(s=>({...s,Motivo:e.target.value}))} />
                   {createError && <div className="error">{createError}</div>}
                   <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
                     <button className="btn" type="submit">Crear</button>
@@ -598,6 +799,54 @@ export default function Citas() {
               </form>
             </Modal>
           )}
+
+          {showReprogram && reprogramItem && (
+            <Modal title={`Reprogramar cita #${reprogramItem.id}`} onClose={()=>{ setShowReprogram(false); setReprogramItem(null); setReprogramError(null); setReprogramAvailableDates(new Set()); setReprogramAvailableSlots([]) }}>
+              <form onSubmit={handleReprogramSubmit}>
+                <div className="form-grid">
+                  <div style={{ width: '100%' }}>
+                    {reprogramLoadingAvailableDates ? <small className="muted">Cargando fechas disponibles...</small> : null}
+                    {reprogramAvailableDates.size>0 ? <small className="muted">Fechas habilitadas resaltadas en el selector.</small> : null}
+                    <DayPicker
+                      mode="single"
+                      selected={reprogramForm.FechaDate ? parseYmdToDateLocal(reprogramForm.FechaDate) : undefined}
+                      onSelect={handleReprogramDaySelect}
+                      modifiers={reprogramModifiers}
+                      modifiersClassNames={modifiersClassNames}
+                      disabled={reprogramDisabled}
+                      fromDate={new Date()}
+                    />
+                  </div>
+
+                  <div>
+                    {reprogramLoadingSlots ? <div style={{ padding: 8 }}>Cargando horarios...</div> : null}
+                    {!reprogramLoadingSlots && reprogramAvailableSlots && reprogramAvailableSlots.length > 0 ? (
+                      <select className="input" value={reprogramForm.FechaTime || ''} onChange={e=>setReprogramForm(s=>({...s,FechaTime:e.target.value}))}>
+                        <option value="">Seleccione hora</option>
+                        {reprogramAvailableSlots.map(s => (
+                          <option key={s.inicioIso} value={s.inicioIso}>{formatTime(s.inicioIso)}{s.finIso ? ' - ' + formatTime(s.finIso) : ''}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="time" className="input" value={extractTimeHHMM(reprogramForm.FechaTime)} onChange={e=>setReprogramForm(f=>({...f,FechaTime:e.target.value}))} disabled={!reprogramForm.FechaDate || reprogramLoadingSlots} />
+                    )}
+                  </div>
+
+                  <div>
+                    <label>Duración (min) — opcional</label>
+                    <input type="number" className="input" value={reprogramForm.DuracionMinutos ?? ''} onChange={e=>setReprogramForm(f=>({...f,DuracionMinutos: e.target.value ? Number(e.target.value) : null }))} />
+                  </div>
+
+                  {reprogramError && <div className="error">{reprogramError}</div>}
+                  <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+                    <button className="btn" type="submit" disabled={reprogramLoading}>{reprogramLoading ? 'Guardando...' : 'Reprogramar'}</button>
+                    <button type="button" className="btn ghost" onClick={()=>{ setShowReprogram(false); setReprogramItem(null); setReprogramError(null); setReprogramAvailableDates(new Set()); setReprogramAvailableSlots([]) }}>Cancelar</button>
+                  </div>
+                </div>
+              </form>
+            </Modal>
+          )}
+
           {items.map((c) => (
             <div className="card" key={c.id ?? JSON.stringify(c)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -617,15 +866,15 @@ export default function Citas() {
                   </div>
                   <div style={{ marginTop: 8 }}>
                     <button className="btn small" onClick={() => handleView(c)}>Ver</button>
-                    <button className="btn small" onClick={() => handleEdit(c)} style={{ marginLeft: 6 }}>Editar</button>
+                    <button className="btn small" onClick={() => handleEdit(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
                     <button
                       className="btn small ghost"
                       onClick={() => handleCancel(c)}
                       style={{ marginLeft: 6 }}
                       disabled={!isAuthed}
-                      title={!isAuthed ? 'Debe iniciar sesión para cancelar' : ''}
+                      title={!isAuthed ? 'Debe iniciar sesión para anular' : ''}
                     >
-                      Cancelar
+                      Anular
                     </button>
                   </div>
                 </div>
