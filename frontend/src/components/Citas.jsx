@@ -165,7 +165,9 @@ export default function Citas() {
       return {
         id: c.id ?? c.Id ?? c.citaId ?? null,
         fecha,
+        especialidadNombre: c.especialidadNombre ?? c.EspecialidadNombre ?? c.Especialidad?.Nombre ?? c.EspecialidadNombre ?? '',
         pacienteNombre,
+        pacienteFamiliaId: c.paciente?.FamiliaId ?? c.paciente?.familiaId ?? c.Paciente?.FamiliaId ?? c.Paciente?.familiaId ?? c.FamiliaId ?? c.familiaId ?? null,
         pacienteId: c.pacienteId ?? c.PacienteId ?? c.paciente?.id,
         terapeutaNombre,
         terapeutaId: c.terapeutaId ?? c.TerapeutaId ?? c.terapeuta?.id,
@@ -759,6 +761,7 @@ export default function Citas() {
 
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                   <div style={{color:'#5f6b6f'}}><strong>Terapeuta</strong><div style={{marginTop:6}}>{viewItem.terapeutaNombre || '—'}</div></div>
+                  <div style={{color:'#5f6b6f'}}><strong>Especialidad</strong><div style={{marginTop:6}}>{viewItem.especialidadNombre || viewItem.raw?.EspecialidadNombre || viewItem.raw?.especialidadNombre || '—'}</div></div>
                   <div style={{color:'#5f6b6f'}}><strong>Fecha</strong><div style={{marginTop:6}}>{viewItem.fecha ? parseIsoSafe(viewItem.fecha)?.toLocaleString() : '—'}</div></div>
                   <div style={{color:'#5f6b6f'}}><strong>Tipo de sesión</strong><div style={{marginTop:6}}>{viewItem.tipoSesionNombre || '—'}</div></div>
                   <div style={{color:'#5f6b6f'}}><strong>Duración</strong><div style={{marginTop:6}}>{(viewItem.duracion ?? '—') + ' min'}</div></div>
@@ -796,7 +799,14 @@ export default function Citas() {
                   </h3>
                   <small className="patient">Paciente: {c.pacienteNombre}</small>
                   <div className="session-row">
+                    <small className="session-type">Especialidad: {c.especialidadNombre || c.raw?.EspecialidadNombre || c.raw?.especialidadNombre || '—'}</small>
                     <small className="session-type">Tipo de Sesión: {c.tipoSesionNombre}</small>
+                    <small className="session-type">Terapeuta: {c.terapeutaNombre || c.raw?.TerapeutaNombre || c.raw?.terapeutaNombre || (c.raw?.terapeuta ? ((c.raw.terapeuta.Nombres || c.raw.terapeuta.nombres || '') + ' ' + (c.raw.terapeuta.Apellidos || c.raw.terapeuta.apellidos || '')).trim() : '—')}</small>
+                  </div>
+
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <small>Duración: {(c.duracion ?? c.raw?.DuracionMinutos ?? c.raw?.duracionMinutos) ?? '—'} min</small>
+                    <small>Precio: {(c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? (c.raw?.tipoSesion?.precio)) != null ? (c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? c.raw?.tipoSesion?.precio) : '—'}</small>
                   </div>
                 </div>
 
@@ -805,7 +815,10 @@ export default function Citas() {
                     <span className="status-pill">{String(c.estado)}</span>
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <button className="btn small" onClick={() => handleView(c)}>Ver</button>
+                    <button className="btn small" onClick={() => handleView(c)}>Ver detalles</button>
+                    {c.pacienteFamiliaId && (
+                      <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:familia', { detail: { id: c.pacienteFamiliaId } }))} style={{ marginLeft: 6 }}>Ver familia</button>
+                    )}
                     {canReprogramEstado(c.estado) && (
                       <button className="btn small" onClick={() => openReprogramModal(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
                     )}
@@ -822,14 +835,7 @@ export default function Citas() {
                 </div>
               </div>
 
-              <div style={{ height: 4 }} />
-              <div className="meta-row">
-                <small>
-                  Terapeuta: {c.terapeutaNombre || c.raw?.TerapeutaNombre || c.raw?.terapeutaNombre || (c.raw?.terapeuta ? ((c.raw.terapeuta.Nombres || c.raw.terapeuta.nombres || '') + ' ' + (c.raw.terapeuta.Apellidos || c.raw.terapeuta.apellidos || '')).trim() : '—')}
-                </small>
-                <small style={{ marginLeft: 12 }}>Duración: {(c.duracion ?? c.raw?.DuracionMinutos ?? c.raw?.duracionMinutos) ?? '—'} min</small>
-                <small style={{ marginLeft: 12 }}>Precio: {(c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? (c.raw?.tipoSesion?.precio)) != null ? (c.precio ?? c.raw?.Precio ?? c.raw?.precio ?? c.raw?.tipoSesion?.precio) : '—'}</small>
-              </div>
+              
             </div>
           ))}
         </div>

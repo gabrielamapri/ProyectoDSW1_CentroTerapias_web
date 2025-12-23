@@ -108,7 +108,9 @@ export default function Terapeutas() {
             <tr>
               <th>Nombres</th>
               <th>Apellidos</th>
-              <th>Especialidades</th>
+              <th>DNI</th>
+              <th>Correo</th>
+              <th>Especialidad</th>
               <th>Presentación</th>
               <th>Teléfono</th>
               <th>Dirección</th>
@@ -120,6 +122,8 @@ export default function Terapeutas() {
               <tr key={t.id || t.Id || JSON.stringify(t)}>
                 <td>{t.Nombres ?? t.nombres ?? t.nombre ?? '—'}</td>
                 <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
+                <td>{t.DNI ?? t.Dni ?? t.dni ?? '—'}</td>
+                <td>{t.Correo ?? t.correo ?? t.email ?? t.Email ?? '—'}</td>
                 <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
                 <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? t.Presentacion ?? '—'}</td>
                 <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
@@ -147,6 +151,8 @@ export default function Terapeutas() {
             <div style={{display:'grid',gap:8}}>
               <input placeholder="Nombres" aria-label="Nombres" className="input" value={editing.Nombres ?? editing.nombres ?? ''} onChange={e=>setEditing(s=>({...s,Nombres:e.target.value}))} />
               <input placeholder="Apellidos" aria-label="Apellidos" className="input" value={editing.Apellidos ?? editing.apellidos ?? ''} onChange={e=>setEditing(s=>({...s,Apellidos:e.target.value}))} />
+              <input placeholder="DNI" aria-label="DNI" className="input" value={editing.DNI ?? editing.Dni ?? editing.dni ?? ''} onChange={e=>setEditing(s=>({...s,DNI:e.target.value}))} />
+              <input placeholder="Correo" aria-label="Correo" className="input" value={editing.Correo ?? editing.correo ?? editing.email ?? ''} onChange={e=>setEditing(s=>({...s,Correo:e.target.value}))} />
               <select className="input" aria-label="Especialidad" value={editing.EspecialidadId ?? editing.especialidadId ?? ''} onChange={e=>setEditing(s=>({...s,EspecialidadId:e.target.value ? Number(e.target.value) : null}))}>
                 <option value="">Sin especialidad</option>
                 {(especialidades || []).map(es => (

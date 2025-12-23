@@ -220,6 +220,7 @@ export default function Franjas(){
           <thead>
             <tr>
               <th style={styles.th}>Terapeuta</th>
+              <th style={styles.th}>Especialidad</th>
               <th style={styles.th}>Fecha</th>
               <th style={styles.th}>Días</th>
               <th style={styles.th}>Hora Inicio</th>
@@ -237,6 +238,7 @@ export default function Franjas(){
               return (
                 <tr key={it.id ?? it.Id} style={ idx % 2 === 0 ? styles.trEven : styles.trOdd }>
                   <td style={styles.td}>{therapistName(it)}</td>
+                  <td style={styles.td}>{it.EspecialidadNombre ?? it.especialidadNombre ?? it.Especialidad?.Nombre ?? it.Especialidad ?? '—'}</td>
                   <td style={styles.td}>{it.Fecha ? new Date(it.Fecha).toLocaleDateString() : (it.fecha ? new Date(it.fecha).toLocaleDateString() : '—')}</td>
                   <td style={styles.td}>
                     {Array.isArray(it.DiasSemana) && it.DiasSemana.length>0
