@@ -253,9 +253,24 @@ export default function ReportHistorialPaciente(){
               <div className="muted">Teléfono: {report.responsableTelefono ?? '—'}</div>
               <div className="muted">Email: {report.responsableEmail ?? '—'}</div>
             </div>
-            <div style={{padding:12,background:'#f5f7fa',borderRadius:8,minWidth:160}}>
-              <div className="muted">Total citas</div>
-              <div style={{fontWeight:600}}>{report.totalCitas ?? report.total ?? '—'}</div>
+            <div style={{display:'flex',gap:8,alignItems:'stretch',flexWrap:'wrap'}}>
+              <div style={{padding:12,background:'#f5f7fa',borderRadius:8,minWidth:140,marginRight:8}}>
+                <div className="muted">Total citas</div>
+                <div style={{fontWeight:600}}>{report.totalCitas ?? report.total ?? '—'}</div>
+              </div>
+              <div style={{padding:12,background:'#e6ffed',borderRadius:8,minWidth:140,marginRight:8}}>
+                <div className="muted">Completadas</div>
+                <div style={{fontWeight:600}}>{report.citasCompletadas ?? report.CitasCompletadas ?? 0}</div>
+              </div>
+              <div style={{padding:12,background:'#fff0f0',borderRadius:8,minWidth:140,marginRight:8}}>
+                <div className="muted">Canceladas</div>
+                <div style={{fontWeight:600}}>{report.citasCanceladas ?? report.CitasCanceladas ?? 0}</div>
+              </div>
+              <div style={{padding:12,background:'#e8f0ff',borderRadius:8,minWidth:140}}>
+                <div className="muted">Programadas</div>
+                <div style={{fontWeight:600}}>{report.citasProgramadas ?? report.CitasProgramadas ?? 0}</div>
+              </div>
+              <div style={{width:'100%',marginTop:8}} className="muted">Asistencia: { (report.citasCompletadas ?? report.CitasCompletadas ?? 0) > 0 && (report.totalCitas ?? report.total ?? 0) ? Math.round(((report.citasCompletadas ?? report.CitasCompletadas ?? 0)/(report.totalCitas ?? report.total ?? 1))*100) : 0 }%</div>
             </div>
           </div>
         )}
@@ -266,7 +281,14 @@ export default function ReportHistorialPaciente(){
         {list && Array.isArray(list) && (
           <table className="table pastel">
             <thead>
-              <tr><th>Fecha</th><th>Estado</th><th>Terapeuta</th><th>Especialidad</th><th>Tipo Sesión</th><th>Notas</th></tr>
+              <tr>
+                <th style={{width:'14%'}}>Fecha</th>
+                <th style={{width:90}}>Estado</th>
+                <th style={{width:'18%'}}>Terapeuta</th>
+                <th style={{width:'12%'}}>Especialidad</th>
+                <th style={{width:'22%'}}>Tipo Sesión</th>
+                <th style={{width:'30%'}}>Notas</th>
+              </tr>
             </thead>
             <tbody>
               {list.map(r=> {
@@ -289,12 +311,12 @@ export default function ReportHistorialPaciente(){
 
                 return (
                   <tr key={key}>
-                    <td>{formatDate(fecha)}</td>
-                    <td><span style={{display:'inline-block',padding:'4px 8px',borderRadius:12,backgroundColor: (translateEstado(estado)==='Completada'?'green':(translateEstado(estado)==='Anulada'?'crimson':(translateEstado(estado)==='Programada'?'#b8860b':''))),color:'#fff',fontWeight:600}}>{translateEstado(estado)}</span></td>
-                    <td>{renderVal(terapeutaVal)}</td>
-                    <td>{renderVal(especialVal)}</td>
-                    <td>{renderVal(tipoVal)}</td>
-                    <td><div style={{maxWidth:420,maxHeight:72,overflow:'auto',whiteSpace:'pre-wrap'}}>{notasVal}</div></td>
+                    <td style={{width:'14%'}}>{formatDate(fecha)}</td>
+                    <td style={{width:90}}><span style={{display:'inline-block',padding:'4px 8px',borderRadius:12,backgroundColor: (translateEstado(estado)==='Completada'?'green':(translateEstado(estado)==='Anulada'?'crimson':(translateEstado(estado)==='Programada'?'#b8860b':''))),color:'#fff',fontWeight:600}}>{translateEstado(estado)}</span></td>
+                    <td style={{width:'18%'}}>{renderVal(terapeutaVal)}</td>
+                    <td style={{width:'12%'}}>{renderVal(especialVal)}</td>
+                    <td style={{width:'22%'}}>{renderVal(tipoVal)}</td>
+                    <td style={{width:'30%'}}><div style={{maxWidth:'100%',maxHeight:120,overflow:'auto',whiteSpace:'pre-wrap'}}>{notasVal}</div></td>
                   </tr>
                 )
               })}
