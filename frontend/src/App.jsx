@@ -108,7 +108,7 @@ export default function App() {
               <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>Tipo de Sesión</button>
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
-              <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial</button>
+              <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
               <button className={view==='report-asistencia'? 'active':''} onClick={() => setView('report-asistencia')}>Reporte: Asistencia</button>
               <button className={view==='report-estado-cuenta'? 'active':''} onClick={() => setView('report-estado-cuenta')}>Reporte: Estado Cuenta</button>
               <button className={view==='report-progreso'? 'active':''} onClick={() => setView('report-progreso')}>Reporte: Progreso</button>
