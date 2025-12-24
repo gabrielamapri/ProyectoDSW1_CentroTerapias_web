@@ -124,8 +124,8 @@ export default function App() {
               <button className={view==='franjaexcepciones'? 'active':''} onClick={() => setView('franjaexcepciones')}>Franja Excepciones</button>
               <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>Tipo de Sesión</button>
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
-              <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='citasterapeuta'? 'active':''} onClick={() => setView('citasterapeuta')}>Citas del Terapeuta</button>
+              <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
               <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
               
@@ -234,6 +234,14 @@ export default function App() {
               <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Citas</h3>
               <small className="muted">Ver historial de citas</small>
             </div>
+              {/* Tarjeta para Citas del Terapeuta */}
+              <div className="card home-card pastel" onClick={() => setView('citasterapeuta')}>
+                <div className="icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M8 8h8M8 12h8M8 16h4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                </div>
+                <h3 style={{margin:'0 0 6px 0'}}>Citas del Terapeuta</h3>
+                <small className="muted">Ver agenda de terapeutas</small>
+              </div>
             {/* Tarjeta para Reporte: Citas Próximas */}
             <div className="card home-card pastel" onClick={() => setView('report-citas-proximas')}>
               <div className="icon" aria-hidden>

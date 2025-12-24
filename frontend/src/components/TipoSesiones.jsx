@@ -58,7 +58,7 @@ export default function TipoSesiones(){
             value={search} 
             onChange={e=>setSearch(e.target.value)} 
           />
-          <button className="btn" onClick={()=>setEditing({})}>Nuevo Tipo</button>
+          <button className="btn" onClick={()=>setEditing({ DuracionMinutos: 45 })}>Nuevo Tipo</button>
         </div>
       </div>
       <div style={{marginTop:12}} className="card">
@@ -87,7 +87,10 @@ export default function TipoSesiones(){
             <div style={{display:'grid',gap:8}}>
               <input className="input" placeholder="Nombre" value={editing.Nombre ?? editing.nombre ?? ''} onChange={e=>setEditing(s=>({...s,Nombre:e.target.value}))} />
               <textarea className="input" placeholder="Descripción" value={editing.Descripcion ?? editing.descripcion ?? ''} onChange={e=>setEditing(s=>({...s,Descripcion:e.target.value}))} />
-                <input className="input" type="number" min="0" placeholder="Duración (min)" value={editing.DuracionMinutos ?? editing.duracionMinutos ?? ''} onChange={e=>setEditing(s=>({...s,DuracionMinutos:e.target.value}))} />
+                <input className="input" type="number" min="0" placeholder="Duración (min)" value={editing.DuracionMinutos ?? editing.duracionMinutos ?? ''} 
+                  onChange={e=>setEditing(s=>({...s,DuracionMinutos:e.target.value}))}
+                  readOnly={editing && editing.DuracionMinutos === 45 && !editing.id && !editing.Id}
+                />
                 <input className="input" type="number" step="0.01" min="0" placeholder="Precio" value={editing.Precio ?? editing.precio ?? ''} onChange={e=>setEditing(s=>({...s,Precio:e.target.value}))} />
               <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
                 <button className="btn" type="submit">Guardar</button>

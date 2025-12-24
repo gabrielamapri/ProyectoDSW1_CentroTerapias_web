@@ -67,7 +67,6 @@ export default function NotasSesion(){
             onChange={e=>setSearch(e.target.value)}
             style={{width:360}}
           />
-          <button className="btn" onClick={()=>setEditing({})}>Nueva Nota</button>
         </div>
       </div>
       <div style={{marginTop:12}} className="card">
@@ -91,11 +90,9 @@ export default function NotasSesion(){
       </div>
 
       {editing && (
-        <Modal title={`Nota ${(editing.Id||editing.id)||''}`} onClose={()=>setEditing(null)}>
+        <Modal title={`Editar Nota`} onClose={()=>setEditing(null)}>
           <form onSubmit={e=>{e.preventDefault(); handleSave(editing)}}>
             <div style={{display:'grid',gap:8}}>
-              <input className="input" placeholder="CitaId" value={editing.CitaId ?? editing.citaId ?? ''} onChange={e=>setEditing(s=>({...s,CitaId:Number(e.target.value)}))} />
-              <input className="input" placeholder="TerapeutaId" value={editing.TerapeutaId ?? editing.terapeutaId ?? ''} onChange={e=>setEditing(s=>({...s,TerapeutaId:Number(e.target.value)}))} />
               <textarea className="input" placeholder="Notas" value={editing.Notas ?? editing.notas ?? ''} onChange={e=>setEditing(s=>({...s,Notas:e.target.value}))} />
               <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
                 <button className="btn" type="submit">Guardar</button>

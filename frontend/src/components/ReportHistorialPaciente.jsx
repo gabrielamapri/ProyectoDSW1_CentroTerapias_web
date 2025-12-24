@@ -310,11 +310,17 @@ export default function ReportHistorialPaciente(){
                 <div className="muted">Canceladas</div>
                 <div style={{fontWeight:600}}>{report.citasCanceladas ?? report.CitasCanceladas ?? 0}</div>
               </div>
-              <div style={{padding:12,background:'#e8f0ff',borderRadius:8,minWidth:140}}>
+              <div style={{padding:12,background:'#e8f0ff',borderRadius:8,minWidth:140,marginRight:8}}>
                 <div className="muted">Programadas</div>
                 <div style={{fontWeight:600}}>{report.citasProgramadas ?? report.CitasProgramadas ?? 0}</div>
               </div>
-              <div style={{width:'100%',marginTop:8}} className="muted">Asistencia: { (report.citasCompletadas ?? report.CitasCompletadas ?? 0) > 0 && (report.totalCitas ?? report.total ?? 0) ? Math.round(((report.citasCompletadas ?? report.CitasCompletadas ?? 0)/(report.totalCitas ?? report.total ?? 1))*100) : 0 }%</div>
+              <div style={{padding:12,background:'#ffe6e6',borderRadius:8,minWidth:140}}>
+                <div className="muted">No asistidas</div>
+                <div style={{fontWeight:600,color:'#8a1f1f'}}>{report.citasNoAsistidas ?? report.CitasNoAsistidas ?? 0}</div>
+              </div>
+              <div style={{width:'100%',marginTop:8}} className="muted">
+                Asistencia: { (report.citasCompletadas ?? report.CitasCompletadas ?? 0) > 0 && (report.totalCitas ?? report.total ?? 0) ? Math.round(((report.citasCompletadas ?? report.CitasCompletadas ?? 0)/(report.totalCitas ?? report.total ?? 1))*100) : 0 }%
+              </div>
             </div>
           </div>
         )}

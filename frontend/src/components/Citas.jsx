@@ -364,58 +364,67 @@ export default function Citas() {
     if (!terapeutaId) return
 
     try {
-      setLoadingAvailableDates(true)
-      const start = new Date()
-      const end = new Date()
-      end.setDate(start.getDate() + 30)
-      const startIso = toYmdLocal(start)
-      const endIso = toYmdLocal(end)
-      const url = `/api/franjas/${terapeutaId}/available-dates?start=${startIso}&end=${endIso}&duracion=${createForm.DuracionMinutos || 45}`
-      const res = await apiFetch(url)
-      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : []
+      setLoadingAvailableDates(true);
+      const start = new Date();
+      const end = new Date(start.getFullYear() + 1, 11, 31); // hasta fin de 2026
+      const startIso = toYmdLocal(start);
+      const endIso = toYmdLocal(end);
+      const url = `/api/franjas/${terapeutaId}/available-dates?start=${startIso}&end=${endIso}&duracion=${createForm.DuracionMinutos || 45}`;
+      const res = await apiFetch(url);
+      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : [];
       const set = new Set((arr || []).map(s => {
-        if (!s) return ''
-        const d = parseIsoSafe(typeof s === 'string' ? s : s.Fecha ?? s.fecha ?? s)
-        return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '')
-      }).filter(Boolean))
-      setAvailableDates(set)
+        if (!s) return '';
+        const d = parseIsoSafe(typeof s === 'string' ? s : s.Fecha ?? s.fecha ?? s);
+        return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '');
+      }).filter(Boolean));
+      setAvailableDates(set);
     } catch {
-      setAvailableDates(new Set())
+      setAvailableDates(new Set());
     } finally {
-      setLoadingAvailableDates(false)
+      setLoadingAvailableDates(false);
     }
   }
 
   async function handleDaySelect(day) {
-    if (!day) return
-    const dateVal = toYmdLocal(day)
-    setCreateForm(s => ({ ...s, FechaDate: dateVal, FechaTime: '' }))
-    setAvailableSlots([])
-    setCreateError(null)
+    if (!day) return;
+    const dateVal = toYmdLocal(day);
+    setCreateForm(s => ({ ...s, FechaDate: dateVal, FechaTime: '' }));
+    setAvailableSlots([]);
+    setCreateError(null);
     if (availableDates.size > 0 && !availableDates.has(dateVal)) {
-      setCreateError('Fecha no disponible para el terapeuta seleccionado. Elige otra fecha.')
-      return
+      setCreateError('Fecha no disponible para el terapeuta seleccionado. Elige otra fecha.');
+      return;
     }
-    const terapeutaId = createForm.TerapeutaId ? Number(createForm.TerapeutaId) : null
-    if (!terapeutaId) return
+    const terapeutaId = createForm.TerapeutaId ? Number(createForm.TerapeutaId) : null;
+    if (!terapeutaId) return;
 
     try {
-      setLoadingSlots(true)
-      const url = `/api/franjas/${terapeutaId}/slots?date=${dateVal}&duracion=${createForm.DuracionMinutos || 45}`
-      const res = await apiFetch(url)
-      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : []
-      const slots = (arr || []).map(s => {
-        const rawInicio = s.inicio ?? s.Inicio ?? s.inicioIso ?? s.InicioIso ?? s.fecha ?? s.Fecha ?? s.inicioUtc ?? s.InicioUtc ?? s.inicioHora
-        const rawFin = s.fin ?? s.Fin ?? s.finIso ?? s.FinIso ?? null
-        const inicioDate = parseIsoSafe(rawInicio)
-        const finDate = parseIsoSafe(rawFin)
-        return { inicioIso: inicioDate ? formatLocalIso(inicioDate) : null, finIso: finDate ? formatLocalIso(finDate) : null }
-      }).filter(s=>s.inicioIso)
-      setAvailableSlots(slots)
+      setLoadingSlots(true);
+      const url = `/api/franjas/${terapeutaId}/slots?date=${dateVal}&duracion=${createForm.DuracionMinutos || 45}`;
+      const res = await apiFetch(url);
+      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : [];
+      let slots = (arr || []).map(s => {
+        const rawInicio = s.inicio ?? s.Inicio ?? s.inicioIso ?? s.InicioIso ?? s.fecha ?? s.Fecha ?? s.inicioUtc ?? s.InicioUtc ?? s.inicioHora;
+        const rawFin = s.fin ?? s.Fin ?? s.finIso ?? s.FinIso ?? null;
+        const inicioDate = parseIsoSafe(rawInicio);
+        const finDate = parseIsoSafe(rawFin);
+        return { inicioIso: inicioDate ? formatLocalIso(inicioDate) : null, finIso: finDate ? formatLocalIso(finDate) : null };
+      }).filter(s=>s.inicioIso);
+
+      // Si la fecha seleccionada es hoy, filtrar solo los horarios futuros
+      const now = new Date();
+      const todayYmd = toYmdLocal(now);
+      if (dateVal === todayYmd) {
+        slots = slots.filter(slot => {
+          const slotDate = parseIsoSafe(slot.inicioIso);
+          return slotDate && slotDate > now;
+        });
+      }
+      setAvailableSlots(slots);
     } catch {
-      setAvailableSlots([]) 
+      setAvailableSlots([]);
     } finally {
-      setLoadingSlots(false)
+      setLoadingSlots(false);
     }
   }
 
@@ -624,7 +633,10 @@ export default function Citas() {
               autoComplete="off"
               spellCheck={false}
             />
-            <button className="btn" onClick={()=>setShowCreate(true)}>Nueva Cita</button>
+            <button className="btn" onClick={()=>{
+              setCreateForm({ PacienteId: '', TerapeutaId: '', TipoSesionId: '', FechaDate: '', FechaTime: '', DuracionMinutos: 45, Motivo: '' });
+              setShowCreate(true);
+            }}>Nueva Cita</button>
           </div>
         </div>
 
@@ -635,34 +647,34 @@ export default function Citas() {
           {showCreate && (
             <Modal title="Nueva Cita" onClose={()=>{ setShowCreate(false); setCreateError(null) }}>
               <form onSubmit={e=>{ e.preventDefault(); handleCreateSubmit() }}>
-                <div className="form-grid">
-                  <select className="input" value={createForm.PacienteId || ''} onChange={e=>setCreateForm(s=>({...s,PacienteId: e.target.value === '' ? '' : Number(e.target.value)}))}>
-                    <option value="">Seleccione paciente</option>
-                    {(pacientesList||[]).map(p=> (
-                      <option key={p.Id ?? p.id} value={p.Id ?? p.id}>{(p.Nombres || p.nombres || p.nombre || '') + ' ' + (p.Apellidos || p.apellidos || '')}</option>
-                    ))}
-                  </select>
-
-                  <select className="input" value={createForm.TipoSesionId || ''} onChange={onTipoSesionChange}>
-                    <option value="">Seleccione tipo de sesión</option>
-                    {(tiposList||[]).map(ts=> (
-                      <option key={ts.Id ?? ts.id} value={ts.Id ?? ts.id}>{ts.Nombre ?? ts.nombre ?? ts.name}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    className="input"
-                    value={createForm.TerapeutaId || ''}
-                    onChange={onTerapeutaChange}
-                    disabled={!createForm.TipoSesionId || loadingTerapeutasCreate}
-                  >
-                    <option value="">{createForm.TipoSesionId ? 'Seleccione terapeuta' : 'Seleccione tipo de sesión primero'}</option>
-                    {(!loadingTerapeutasCreate && (terapeutasList||[]).length>0) && (terapeutasList||[]).map(t=> (
-                      <option key={t.Id ?? t.id} value={t.Id ?? t.id}>{((t.Nombres||t.nombres||t.nombre||'') + ' ' + (t.Apellidos||t.apellidos||'')) || (t.especialidadNombre || t.EspecialidadNombre || t.Especialidad?.Nombre || 'Terapeuta')}</option>
-                    ))}
-                  </select>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="form-grid" style={{gridTemplateColumns:'1fr 1fr',gap:'18px'}}>
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    <select className="input" value={createForm.PacienteId || ''} onChange={e=>setCreateForm(s=>({...s,PacienteId: e.target.value === '' ? '' : Number(e.target.value)}))}>
+                      <option value="">Seleccione paciente</option>
+                      {(pacientesList||[]).map(p=> (
+                        <option key={p.Id ?? p.id} value={p.Id ?? p.id}>{(p.Nombres || p.nombres || p.nombre || '') + ' ' + (p.Apellidos || p.apellidos || '')}</option>
+                      ))}
+                    </select>
+                    <select className="input" value={createForm.TipoSesionId || ''} onChange={onTipoSesionChange}>
+                      <option value="">Seleccione tipo de sesión</option>
+                      {(tiposList||[]).map(ts=> (
+                        <option key={ts.Id ?? ts.id} value={ts.Id ?? ts.id}>{ts.Nombre ?? ts.nombre ?? ts.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="input"
+                      value={createForm.TerapeutaId || ''}
+                      onChange={onTerapeutaChange}
+                      disabled={!createForm.TipoSesionId || loadingTerapeutasCreate}
+                    >
+                      <option value="">{createForm.TipoSesionId ? 'Seleccione terapeuta' : 'Seleccione tipo de sesión primero'}</option>
+                      {(!loadingTerapeutasCreate && (terapeutasList||[]).length>0) && (terapeutasList||[]).map(t=> (
+                        <option key={t.Id ?? t.id} value={t.Id ?? t.id}>{((t.Nombres||t.nombres||t.nombre||'') + ' ' + (t.Apellidos||t.apellidos||'')) || (t.especialidadNombre || t.EspecialidadNombre || t.Especialidad?.Nombre || 'Terapeuta')}</option>
+                      ))}
+                    </select>
+                    <input type="number" className="input" value={createForm.DuracionMinutos || ''} onChange={e=>setCreateForm(s=>({...s,DuracionMinutos:Number(e.target.value)}))} />
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
                     <div style={{ width: '100%' }}>
                       {loadingAvailableDates ? <small className="muted">Cargando fechas disponibles...</small> : null}
                       {availableDates.size>0 ? <small className="muted">Fechas habilitadas resaltadas en el selector.</small> : null}
@@ -676,7 +688,6 @@ export default function Citas() {
                         fromDate={new Date()}
                       />
                     </div>
-
                     <div style={{ width: '100%' }}>
                       {loadingSlots ? <div style={{ padding: 8 }}>Cargando horarios...</div> : null}
                       {!loadingSlots && availableSlots && availableSlots.length>0 ? (
@@ -690,12 +701,10 @@ export default function Citas() {
                         <input type="time" className="input" value={extractTimeHHMM(createForm.FechaTime)} onChange={e=>setCreateForm(s=>({...s,FechaTime:e.target.value}))} disabled={!createForm.FechaDate || loadingSlots} />
                       )}
                     </div>
+                    <input className="input" placeholder="Motivo" value={createForm.Motivo || ''} onChange={e=>setCreateForm(s=>({...s,Motivo:e.target.value}))} />
                   </div>
-
-                  <input type="number" className="input" value={createForm.DuracionMinutos || ''} onChange={e=>setCreateForm(s=>({...s,DuracionMinutos:Number(e.target.value)}))} />
-                  <input className="input" placeholder="Motivo" value={createForm.Motivo || ''} onChange={e=>setCreateForm(s=>({...s,Motivo:e.target.value}))} />
                   {createError && <div className="error">{createError}</div>}
-                  <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+                  <div style={{gridColumn:'1/3',display:'flex',justifyContent:'flex-end',gap:8}}>
                     <button className="btn" type="submit">Crear</button>
                     <button type="button" className="btn ghost" onClick={()=>{ setShowCreate(false); setCreateError(null) }}>Cancelar</button>
                   </div>
@@ -812,14 +821,42 @@ export default function Citas() {
 
                 <div style={{ textAlign: 'right' }}>
                   <div>
-                    <span className="status-pill">{String(c.estado)}</span>
+                    <span
+                      className="status-pill"
+                      style={{
+                        background:
+                          c.estado === 'Completada' || c.estado === 'Completed' ? '#d6f5ff' // celeste pastel
+                        : c.estado === 'Programada' || c.estado === 'Scheduled' ? '#d6c6ff' // lila pastel más notorio
+                        : c.estado === 'NoAsistio' || c.estado === 'NoAsistida' ? '#fff9d6' // amarillo pastel
+                        : c.estado === 'Cancelada' || c.estado === 'Cancelled' || c.estado === 'Anulada' || c.estado === 'Anulado' ? '#e6ffe6' // verde pastel
+                        : '#f5f7fa',
+                        color:
+                          c.estado === 'Completada' || c.estado === 'Completed' ? '#1a4a5a'
+                        : c.estado === 'Programada' || c.estado === 'Scheduled' ? '#6c3ad6'
+                        : c.estado === 'NoAsistio' || c.estado === 'NoAsistida' ? '#b89a00'
+                        : c.estado === 'Cancelada' || c.estado === 'Cancelled' || c.estado === 'Anulada' || c.estado === 'Anulado' ? '#217a36'
+                        : '#222',
+                        border:'1px solid #d0d0d0',
+                        borderRadius:'6px',
+                        padding:'7px 14px',
+                        fontWeight:700,
+                        fontSize: c.estado === 'Programada' || c.estado === 'Scheduled' ? '18px' : '14px',
+                        display:'inline-block',
+                        minWidth:'140px',
+                        textAlign:'center',
+                        boxShadow:'0 2px 8px rgba(44,62,80,0.07)',
+                        margin:'2px 0'
+                      }}
+                    >
+                      {String(c.estado)}
+                    </span>
                   </div>
                   <div style={{ marginTop: 8 }}>
                     <button className="btn small" onClick={() => handleView(c)}>Ver detalles</button>
                     {c.pacienteFamiliaId && (
                       <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:familia', { detail: { id: c.pacienteFamiliaId } }))} style={{ marginLeft: 6 }}>Ver familia</button>
                     )}
-                    {canReprogramEstado(c.estado) && (
+                    {['Programado','Programada','Scheduled'].includes(translateEstado(c.estado)) && (
                       <button className="btn small" onClick={() => openReprogramModal(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
                     )}
                     <button
