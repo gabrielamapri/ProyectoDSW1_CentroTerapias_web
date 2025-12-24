@@ -1,5 +1,5 @@
 // prefer VITE_API_URL; in dev use relative paths so Vite proxy handles /api
-const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? '' : 'http://localhost:5192')
+const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? '' : 'http://localhost:5291')
 
 // NOTE: uses `token` key to match frontend (localStorage.getItem('token'))
 export async function apiFetch(path, options = {}) {

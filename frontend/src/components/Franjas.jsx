@@ -221,7 +221,7 @@ export default function Franjas(){
             <tr>
               <th style={styles.th}>Terapeuta</th>
               <th style={styles.th}>Especialidad</th>
-              <th style={styles.th}>Fecha</th>
+              <th style={styles.th}>Fechas Especificas</th>
               <th style={styles.th}>Días</th>
               <th style={styles.th}>Hora Inicio</th>
               <th style={styles.th}>Hora Fin</th>
@@ -252,8 +252,6 @@ export default function Franjas(){
                   <td style={styles.td}>
                     <button style={{...styles.btn, ...styles.btnSmall}} onClick={()=>openEdit(it)}>Editar</button>
                     <button style={{...styles.btn, ...styles.btnGhost}} onClick={()=>handleDelete(it)}>Eliminar</button>
-                    <button className="btn small" onClick={()=>createException(it)} style={{marginLeft:8}}>Añadir excepción</button>
-                    <button className="btn small ghost" onClick={()=>deleteException(it)} style={{marginLeft:8}}>Eliminar excepción</button>
                   </td>
                 </tr>
               )
@@ -379,16 +377,16 @@ const styles = {
   header: { display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 },
   title: { margin:0, color:'#2b2b2b' },
   btn: { padding:'8px 12px', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 },
-  btnPrimary: { background: 'linear-gradient(90deg,#6C5CE7,#00BFA6)', color:'#fff', boxShadow:'0 6px 18px rgba(44, 62, 80, 0.12)' },
+  btnPrimary: { background: 'linear-gradient(90deg,#8ab6f9,#b9e0ff)', color:'#244266', boxShadow:'0 8px 20px rgba(88, 120, 190, 0.18)', border:'1px solid #cfe2ff' },
   btnGhost: { background:'#fff', color:'#6c6c6c', border:'1px solid #e0e0e0' },
-  btnSmall: { padding:'6px 8px', fontSize:13, marginRight:6, background:'#0984e3', color:'#fff', borderRadius:5 },
-  table: { width:'100%', borderCollapse:'collapse', marginTop:8, boxShadow:'0 6px 18px rgba(20,20,20,0.03)', borderRadius:8, overflow:'hidden' },
-  th: { textAlign:'left', padding:'10px 12px', background:'#0d6efd', color:'#fff', fontWeight:600, fontSize:14 },
-  td: { padding:'10px 12px', borderBottom:'1px solid #f0f0f0', verticalAlign:'middle' },
-  trEven: { background: '#fff' },
-  trOdd: { background: '#fafbff' },
-  dayChip: { display:'inline-block', padding:'4px 8px', marginRight:6, background:'#ffeaa7', borderRadius:999, fontSize:12, color:'#2d3436' },
-  badge: { display:'inline-block', padding:'4px 8px', borderRadius:999, background:'#55efc4', color:'#064e3b', fontWeight:600, fontSize:12 },
+  btnSmall: { padding:'6px 8px', fontSize:13, marginRight:6, background:'#9bb8ff', color:'#24325f', borderRadius:5, border:'1px solid #d6e2ff' },
+  table: { width:'100%', borderCollapse:'collapse', marginTop:8, boxShadow:'0 8px 22px rgba(78, 101, 173, 0.10)', borderRadius:10, overflow:'hidden', background:'#fdfcff' },
+  th: { textAlign:'left', padding:'10px 12px', background:'#e8edff', color:'#2f3a5a', fontWeight:700, fontSize:14, borderBottom:'1px solid #d8e2ff' },
+  td: { padding:'10px 12px', borderBottom:'1px solid #edf0f7', verticalAlign:'middle', color:'#2f3640' },
+  trEven: { background: '#ffffff' },
+  trOdd: { background: '#f7f5ff' },
+  dayChip: { display:'inline-block', padding:'4px 8px', marginRight:6, background:'#e6f4ff', borderRadius:999, fontSize:12, color:'#1f4b6e', border:'1px solid #d6e9ff' },
+  badge: { display:'inline-block', padding:'4px 8px', borderRadius:999, background:'#dff7e7', color:'#215a36', fontWeight:600, fontSize:12, border:'1px solid #c6ebd4' },
   input: { width:'100%', padding:'10px', borderRadius:8, border:'1px solid #e6e9ef', outline:'none', boxSizing:'border-box' },
   timeInput: { padding:'8px', borderRadius:8, border:'1px solid #e6e9ef', background:'#fff' },
   dropdown: { position:'absolute', left:0, right:0, background:'#fff', border:'1px solid #ddd', maxHeight:220, overflow:'auto', zIndex:30, boxShadow:'0 8px 30px rgba(11,12,30,0.08)' },

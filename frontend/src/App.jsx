@@ -9,6 +9,7 @@ import Franjas from './components/Franjas'
 import NotasSesion from './components/NotasSesion'
 import ReportHistorialPaciente from './components/ReportHistorialPaciente'
 import ReportHistorialCitas from './components/ReportHistorialCitas'
+import FranjaExcepciones from './components/FranjaExcepciones'
 
 import ReportCitasProximas from './components/ReportCitasProximas'
 import Familias from './components/Familias'
@@ -31,6 +32,14 @@ export default function App() {
     setToken(null)
   }
 
+  // Helper para navegar a familias y resetear estados
+  function navigateToFamilias() {
+    setSelectedFamilyId(null)
+    setSelectedFamilyOpenCreate(false)
+    setSelectedFamilyPatientId(null)
+    setView('familias')
+  }
+
   React.useEffect(() => {
     function onUnauthorized() {
       handleLogout()
@@ -50,6 +59,7 @@ export default function App() {
       setView('familias')
     }
     window.addEventListener('navigate:familia', onNavigateFamilia)
+    
     function onNavigatePaciente(e){
       const d = e.detail || {}
       setView('pacientes')
@@ -62,7 +72,11 @@ export default function App() {
       } catch {}
     }
     window.addEventListener('navigate:paciente', onNavigatePaciente)
-    return () => window.removeEventListener('navigate:familia', onNavigateFamilia)
+    
+    return () => {
+      window.removeEventListener('navigate:familia', onNavigateFamilia)
+      window.removeEventListener('navigate:paciente', onNavigatePaciente)
+    }
   }, [])
 
   return (
@@ -101,11 +115,12 @@ export default function App() {
           <aside className="sidebar">
             <nav className="nav-vertical">
               <button className={view==='home'? 'active':''} onClick={() => setView('home')}>Inicio</button>
-              <button className={view==='familias'? 'active':''} onClick={() => setView('familias')}>Familias</button>
+              <button className={view==='familias'? 'active':''} onClick={navigateToFamilias}>Familias</button>
               <button className={view==='pacientes'? 'active':''} onClick={() => setView('pacientes')}>Pacientes</button>
               <button className={view==='especialidades'? 'active':''} onClick={() => setView('especialidades')}>Especialidades</button>
               <button className={view==='terapeutas'? 'active':''} onClick={() => setView('terapeutas')}>Terapeutas</button>
               <button className={view==='franjas'? 'active':''} onClick={() => setView('franjas')}>Franjas</button>
+              <button className={view==='franjaexcepciones'? 'active':''} onClick={() => setView('franjaexcepciones')}>Franja Excepciones</button>
               <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>Tipo de Sesión</button>
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
@@ -138,7 +153,7 @@ export default function App() {
               <small className="muted">Gestionar personas atendidas</small>
             </div>
 
-            <div className="card home-card pastel" onClick={() => setView('familias')}>
+            <div className="card home-card pastel" onClick={navigateToFamilias}>
               <div className="icon" aria-hidden>
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3z" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 20c0-2.21 3.58-4 6-4s6 1.79 6 4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
@@ -204,6 +219,7 @@ export default function App() {
         {view === 'especialidades' && <Especialidades />}
         {view === 'tiposesiones' && <TipoSesiones />}
         {view === 'franjas' && <Franjas />}
+        {view === 'franjaexcepciones' && <FranjaExcepciones />}
         {view === 'notas' && <NotasSesion />}
         {view === 'report-historial' && <ReportHistorialPaciente />}
         {view === 'report-historial-citas' && <ReportHistorialCitas />}

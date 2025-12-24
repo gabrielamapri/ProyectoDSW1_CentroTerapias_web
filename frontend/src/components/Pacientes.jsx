@@ -104,6 +104,30 @@ export default function Pacientes() {
     return () => window.removeEventListener('open:create:paciente', onOpenCreate)
   }, [])
 
+  useEffect(() => {
+    function onRefreshPacientes() {
+      // Recargar la tabla actual de pacientes
+      const q = []
+      q.push(`page=${page}`)
+      q.push(`pageSize=${pageSize}`)
+      if (search) q.push(`search=${encodeURIComponent(search)}`)
+      
+      async function reloadData() {
+        try {
+          const res = await apiFetchWithMeta(`/api/pacientes?${q.join('&')}`)
+          setItems(res.data)
+          const cnt = res.headers.get('x-total-count') || (Array.isArray(res.data) ? String(res.data.length) : '0')
+          setTotal(Number(cnt))
+        } catch (e) {
+          console.warn('Error recargando pacientes:', e)
+        }
+      }
+      reloadData()
+    }
+    window.addEventListener('refresh:pacientes', onRefreshPacientes)
+    return () => window.removeEventListener('refresh:pacientes', onRefreshPacientes)
+  }, [page, pageSize, search])
+
   async function handleDelete(p) {
     const id = p.Id ?? p.id
     if (!id) return alert('ID de paciente no disponible')
@@ -119,8 +143,8 @@ export default function Pacientes() {
       q.push(`page=${page}`)
       q.push(`pageSize=${pageSize}`)
       if (search) q.push(`search=${encodeURIComponent(search)}`)
-      const refreshed = await apiFetch(`/api/pacientes?${q.join('&')}`)
-      setItems(refreshed)
+      const res = await apiFetchWithMeta(`/api/pacientes?${q.join('&')}`)
+      setItems(res.data)
     } catch (err) {
       alert('Error al eliminar: ' + (err?.message || err))
     }
@@ -163,8 +187,8 @@ export default function Pacientes() {
       q.push(`page=${page}`)
       q.push(`pageSize=${pageSize}`)
       if (search) q.push(`search=${encodeURIComponent(search)}`)
-      const refreshed = await apiFetch(`/api/pacientes?${q.join('&')}`)
-      setItems(refreshed)
+      const res = await apiFetchWithMeta(`/api/pacientes?${q.join('&')}`)
+      setItems(res.data)
       setEditing(null)
     } catch (err) {
       alert('Error al guardar: ' + (err?.message || err))
@@ -239,8 +263,8 @@ export default function Pacientes() {
           <form onSubmit={(e)=>{e.preventDefault(); handleSaveEdit(editing)}}>
             <div style={{display:'grid',gap:8}}>
               <input placeholder="Nombres" aria-label="Nombres" value={(editing.Nombres ?? editing.nombres) || ''} onChange={e=>setEditing(s=>({...s,Nombres:e.target.value}))} className="input" />
-              <input placeholder="DNI" aria-label="DNI" value={(editing.DNI ?? editing.dni ?? editing.Dni) || ''} onChange={e=>setEditing(s=>({...s,DNI:e.target.value}))} className="input" />
               <input placeholder="Apellidos" aria-label="Apellidos" value={(editing.Apellidos ?? editing.apellidos) || ''} onChange={e=>setEditing(s=>({...s,Apellidos:e.target.value}))} className="input" />
+              <input placeholder="DNI" aria-label="DNI" value={(editing.DNI ?? editing.dni ?? editing.Dni) || ''} onChange={e=>setEditing(s=>({...s,DNI:e.target.value}))} className="input" />
               <input
                 type="date"
                 placeholder="Fecha de nacimiento"

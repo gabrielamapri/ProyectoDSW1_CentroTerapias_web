@@ -37,13 +37,7 @@ export default function Familias({ selectedId = null, openCreate = false, prefil
     return ()=> { mounted = false }
   },[selectedId, search])
 
-  // Abrir modal solo si debe abrirse y NO hay un selectedId (prioriza detalle)
-  // Note: automatic open-on-mount removed to avoid showing the "Nueva Familia" form
-  // when navigating to the Familias view via the menu. Use the "Nueva Familia" button
-  // or explicit events to open the form.
   useEffect(()=>{
-    // If the app asked to open create OR a patient requested to create a family,
-    // open the create modal and remember the patient id so we can associate later.
     if ((shouldOpenCreate || prefillPacienteId) && (selectedId === null || selectedId === undefined)){
       const obj = {}
       if(prefillPacienteId) obj.__associatePacienteId = prefillPacienteId
@@ -153,7 +147,17 @@ export default function Familias({ selectedId = null, openCreate = false, prefil
       const newFamilyId = (created && (created.id ?? created.Id)) || id
       if (associatePatientId && newFamilyId) {
         try {
-          await apiFetch(`/api/pacientes/${associatePatientId}`, { method: 'PUT', body: { FamiliaId: newFamilyId } })
+          // Obtener primero los datos completos del paciente
+          const pacienteActual = await apiFetch(`/api/pacientes/${associatePatientId}`)
+          // Actualizar con la nueva familia
+          await apiFetch(`/api/pacientes/${associatePatientId}`, { 
+            method: 'PUT', 
+            body: { ...pacienteActual, FamiliaId: newFamilyId } 
+          })
+          // Refrescar familias nuevamente para que incluya el paciente asociado
+          await refresh()
+          // Emitir evento para que Pacientes se refresque
+          window.dispatchEvent(new CustomEvent('refresh:pacientes'))
         } catch (err) {
           console.warn('No se pudo asociar familia al paciente automáticamente:', err)
         }
@@ -258,7 +262,7 @@ export default function Familias({ selectedId = null, openCreate = false, prefil
               <div style={{display:'flex',flexDirection:'column',gap:8}}>
                 <button className="btn small" onClick={()=>setEditing(f)}>Editar</button>
                 <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:paciente', { detail: { familiaId: f.id ?? f.Id } }))}>Añadir Paciente</button>
-                <button className="btn small ghost" onClick={()=>handleDelete(f)}>Eliminar</button>
+                <button className="btn small" onClick={()=>handleDelete(f)} style={{background:'#dc3545',color:'white',fontWeight:'bold',boxShadow:'0 4px 12px rgba(220,53,69,0.3)'}}>Eliminar</button>
               </div>
             </div>
           </div>

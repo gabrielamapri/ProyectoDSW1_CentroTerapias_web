@@ -19,7 +19,6 @@ export default function Terapeutas() {
         const q = []
         q.push(`page=${page}`)
         q.push(`pageSize=${pageSize}`)
-        // if the search term matches an especialidad name, prefer querying by especialidadId
         if (search) {
           const normalize = (s) => s ? s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() : ''
           const ns = normalize(search)
@@ -28,9 +27,7 @@ export default function Terapeutas() {
           else q.push(`search=${encodeURIComponent(search)}`)
         }
         const ep = `/api/terapeutas?${q.join('&')}`
-        console.debug('[Terapeutas] fetching', ep, { page, pageSize, search })
         const res = await apiFetchWithMeta(ep)
-        console.debug('[Terapeutas] response', res, { headers: res?.headers, dataLen: Array.isArray(res.data) ? res.data.length : undefined })
         if (!mounted) return
         setItems(res.data || [])
         const cnt = res.headers.get('x-total-count') || (Array.isArray(res.data) ? String(res.data.length) : '0')
@@ -47,7 +44,6 @@ export default function Terapeutas() {
   useEffect(() => {
     apiFetch('/api/especialidades')
       .then((res) => {
-        // Accept either: raw array OR object like { value: [...] }
         const list = Array.isArray(res) ? res : (res && Array.isArray(res.value) ? res.value : [])
         setEspecialidades(list)
       })
@@ -57,14 +53,39 @@ export default function Terapeutas() {
   if (error) return <div className="error">Error: {error}</div>
   if (!items) return <div className="card"><div className="spinner" /></div>
 
+  async function refreshList() {
+    const q = []
+    q.push(`page=${page}`)
+    q.push(`pageSize=${pageSize}`)
+    if (search) {
+      const normalize = (s) => s ? s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase() : ''
+      const ns = normalize(search)
+      const found = (especialidades || []).find(e => normalize(e.Nombre ?? e.nombre ?? e.name).includes(ns))
+      if (found) q.push(`especialidadId=${found.id ?? found.Id}`)
+      else q.push(`search=${encodeURIComponent(search)}`)
+    }
+    const ep = `/api/terapeutas?${q.join('&')}`
+    const res = await apiFetchWithMeta(ep)
+    setItems(res.data || [])
+    const cnt = res.headers.get('x-total-count') || (Array.isArray(res.data) ? String(res.data.length) : '0')
+    setTotal(Number(cnt))
+  }
+
   async function handleDelete(t) {
     const id = t.id ?? t.Id
     if (!id) return alert('ID de terapeuta no disponible')
     if (!confirm('¿Eliminar terapeuta? Esta acción no se puede deshacer.')) return
     try {
-      await apiFetch(`/api/terapeutas/${id}`, { method: 'DELETE' })
-      const refreshed = await apiFetch('/api/terapeutas')
-      setItems(refreshed)
+      const resp = await fetch(`/api/terapeutas/${id}`, { method: 'DELETE' })
+      if (!resp.ok) {
+        let msg = 'No se pudo eliminar'
+        try {
+          const body = await resp.json()
+          msg = body?.message || msg
+        } catch {}
+        throw new Error(msg)
+      }
+      await refreshList()
     } catch (err) {
       alert('Error al eliminar: ' + (err?.message || err))
     }
@@ -78,15 +99,13 @@ export default function Terapeutas() {
     const id = updated.Id ?? updated.id
     try {
       const payload = { ...updated }
-      // ensure EspecialidadId is numeric or null
       payload.EspecialidadId = payload.EspecialidadId ? Number(payload.EspecialidadId) : null
       if (id) {
         await apiFetch(`/api/terapeutas/${id}`, { method: 'PUT', body: payload })
       } else {
         await apiFetch('/api/terapeutas', { method: 'POST', body: payload })
       }
-      const refreshed = await apiFetch('/api/terapeutas')
-      setItems(refreshed)
+      await refreshList()
       setEditing(null)
     } catch (err) {
       alert('Error al guardar: ' + (err?.message || err))
@@ -98,7 +117,13 @@ export default function Terapeutas() {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Terapeutas</h2>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <input placeholder="Buscar por nombre, apellido, especialidad o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
+          <input
+            placeholder="Buscar por nombre, apellido, especialidad o dni"
+            className="input"
+            style={{width:320}}
+            value={search}
+            onChange={e=>{ setSearch(e.target.value); setPage(1) }}
+          />
           <button className="btn" onClick={() => setEditing({})}>Nuevo Terapeuta</button>
         </div>
       </div>
@@ -125,7 +150,7 @@ export default function Terapeutas() {
                 <td>{t.DNI ?? t.Dni ?? t.dni ?? '—'}</td>
                 <td>{t.Correo ?? t.correo ?? t.email ?? t.Email ?? '—'}</td>
                 <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
-                <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? t.Presentacion ?? '—'}</td>
+                <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? '—'}</td>
                 <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
                 <td>{t.Direccion ?? t.direccion ?? t.address ?? '—'}</td>
                 <td className="actions">
@@ -146,7 +171,7 @@ export default function Terapeutas() {
       </div>
 
       {editing && (
-        <Modal title={`Editar terapeuta ${(editing.Nombres ?? editing.nombre) || ''}`} onClose={() => setEditing(null)}>
+        <Modal title={`${(editing.Id || editing.id) ? 'Editar terapeuta' : 'Nuevo terapeuta'} ${(editing.Nombres ?? editing.nombre) || ''}`} onClose={() => setEditing(null)}>
           <form onSubmit={(e)=>{e.preventDefault(); handleSaveEdit(editing)}}>
             <div style={{display:'grid',gap:8}}>
               <input placeholder="Nombres" aria-label="Nombres" className="input" value={editing.Nombres ?? editing.nombres ?? ''} onChange={e=>setEditing(s=>({...s,Nombres:e.target.value}))} />
