@@ -64,7 +64,6 @@ export default function Pacientes() {
   useEffect(() => {
     let mounted = true
     async function loadSexo() {
-      // Backend contract: only Masculino (0) and Femenino (1)
       setSexoOptions([
         { value: '0', label: 'Masculino' },
         { value: '1', label: 'Femenino' }
@@ -93,7 +92,12 @@ export default function Pacientes() {
     function onOpenCreate(e){
       const d = e.detail || {}
       const famId = d.familiaId ?? d.FamiliaId ?? d.id ?? d.Id ?? null
-      setEditing({ ...(famId ? { FamiliaId: famId, __showFamilySelect: true } : { __showFamilySelect: false }) })
+      if (famId) {
+        // when opened from a family context, prefill the FamiliaId but keep the field read-only
+        setEditing({ FamiliaId: famId, __prefillFamilia: true })
+      } else {
+        setEditing({ __showFamilySelect: false })
+      }
       try { setPage(1) } catch {}
     }
     window.addEventListener('open:create:paciente', onOpenCreate)
@@ -105,8 +109,17 @@ export default function Pacientes() {
     if (!id) return alert('ID de paciente no disponible')
     if (!confirm('¿Eliminar paciente? Esta acción no se puede deshacer.')) return
     try {
-      await apiFetch(`/api/pacientes/${id}`, { method: 'DELETE' })
-      const refreshed = await apiFetch('/api/pacientes')
+      const resp = await fetch(`/api/pacientes/${id}`, { method: 'DELETE' })
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error(body.message || 'No se pudo eliminar')
+      }
+      // refrescar respetando paginación/búsqueda actuales
+      const q = []
+      q.push(`page=${page}`)
+      q.push(`pageSize=${pageSize}`)
+      if (search) q.push(`search=${encodeURIComponent(search)}`)
+      const refreshed = await apiFetch(`/api/pacientes?${q.join('&')}`)
       setItems(refreshed)
     } catch (err) {
       alert('Error al eliminar: ' + (err?.message || err))
@@ -123,40 +136,29 @@ export default function Pacientes() {
       const payload = { ...updated }
       const s = normalizeSexoCode(updated.Sexo ?? updated.sexo)
       payload.Sexo = s && /^\d+$/.test(s) ? String(Number(s)) : String(s || '3')
-      // Backend calculates age; don't send AgeInYears from the client
       delete payload.AgeInYears
       delete payload.ageInYears
-      // Normalize FechaNacimiento to YYYY-MM-DD to avoid timezone/future-date parsing issues
       const rawDate = updated.FechaNacimiento ?? updated.fechaNacimiento
       if (rawDate) {
         try {
-          // Input from <input type="date"> is already YYYY-MM-DD in most browsers
-          // Ensure we send only the date part (no time zone) so backend parses it as expected
           const dateStr = String(rawDate).slice(0, 10)
           payload.FechaNacimiento = dateStr
-        } catch (e) { /* ignore and send raw value */ }
+        } catch (e) { /* ignore */ }
       }
-
-      // Ensure FamiliaId is optional: remove if empty string or null
       if (payload.FamiliaId === '' || payload.FamiliaId === null || payload.FamiliaId === undefined) {
         delete payload.FamiliaId
       }
-
-      // Validate emergency contact: if one of name/number provided, require both
       const nombreContacto = payload.NombreContactoEmergencia ?? payload.nombreContactoEmergencia
       const numeroContacto = payload.NumeroContactoEmergencia ?? payload.numeroContactoEmergencia
       if ((nombreContacto && !numeroContacto) || (!nombreContacto && numeroContacto)) {
         return alert('Si proporciona contacto de emergencia, debe incluir nombre y número')
       }
-
-      // Debug: show payload sent to backend
       try { console.log('PACIENTE_PAYLOAD', payload) } catch (e) {}
       if (id) {
         await apiFetch(`/api/pacientes/${id}`, { method: 'PUT', body: payload })
       } else {
         await apiFetch('/api/pacientes', { method: 'POST', body: payload })
       }
-      // refresh current page
       const q = []
       q.push(`page=${page}`)
       q.push(`pageSize=${pageSize}`)
@@ -249,16 +251,33 @@ export default function Pacientes() {
                 max={new Date().toISOString().slice(0,10)}
                 className="input"
               />
-              {/* Edad calculada por el backend; no se ingresa manualmente */}
-              {(!isEditingExisting && (((editing.FamiliaId ?? editing.familiaId) !== undefined && (editing.FamiliaId ?? editing.familiaId) !== null) || editing.__showFamilySelect)) && (
-                <select aria-label="FamiliaId" value={(editing.FamiliaId ?? editing.familiaId) ?? ''} onChange={e=>setEditing(s=>({...s,FamiliaId: e.target.value === '' ? '' : Number(e.target.value)}))} className="input">
-                  <option value="">Seleccionar familia</option>
-                  {familiasList.map(f => (
-                    <option key={f.id ?? f.Id} value={f.id ?? f.Id}>
-                      {((f.responsable1Nombre || f.responsable1Apellido) ? `${f.responsable1Nombre ?? ''} ${f.responsable1Apellido ?? ''}`.trim() : (f.ResponsableNombre ?? f.responsableNombre ?? f.nombre ?? f.name)) || `Familia ${f.id ?? f.Id}`}
-                    </option>
-                  ))}
-                </select>
+              {!isEditingExisting && (
+                (editing.__prefillFamilia ? (
+                  // show family as read-only when opened from a family context
+                  (() => {
+                    const fid = (editing.FamiliaId ?? editing.familiaId)
+                    const fam = familiasList.find(x => String(x.id ?? x.Id) === String(fid))
+                    const famLabel = fam ? (((fam.responsable1Nombre || fam.responsable1Apellido) ? `${fam.responsable1Nombre ?? ''} ${fam.responsable1Apellido ?? ''}`.trim() : (fam.ResponsableNombre ?? fam.responsableNombre ?? fam.nombre ?? fam.name)) || `Familia ${fam.id ?? fam.Id}`) : (fid ? `Familia ${fid}` : '—')
+                    return (
+                      <div>
+                        <label style={{display:'block',marginBottom:6}}>Familia</label>
+                        <div className="input" style={{padding:8,background:'#f3f4f6',borderRadius:6}}>{famLabel}</div>
+                      </div>
+                    )
+                  })()
+                ) : (
+                  // otherwise allow selecting a family when requested
+                  (((editing.FamiliaId ?? editing.familiaId) !== undefined && (editing.FamiliaId ?? editing.familiaId) !== null) || editing.__showFamilySelect) && (
+                    <select aria-label="FamiliaId" value={(editing.FamiliaId ?? editing.familiaId) ?? ''} onChange={e=>setEditing(s=>({...s,FamiliaId: e.target.value === '' ? '' : Number(e.target.value)}))} className="input">
+                      <option value="">Seleccionar familia</option>
+                      {familiasList.map(f => (
+                        <option key={f.id ?? f.Id} value={f.id ?? f.Id}>
+                          {((f.responsable1Nombre || f.responsable1Apellido) ? `${f.responsable1Nombre ?? ''} ${f.responsable1Apellido ?? ''}`.trim() : (f.ResponsableNombre ?? f.responsableNombre ?? f.nombre ?? f.name)) || `Familia ${f.id ?? f.Id}`}
+                        </option>
+                      ))}
+                    </select>
+                  )
+                ))
               )}
               <select aria-label="Sexo" value={(editing.Sexo ?? editing.sexo) || ''} onChange={e=>setEditing(s=>({...s,Sexo:e.target.value}))} className="input">
                 <option value="">Seleccionar sexo</option>
