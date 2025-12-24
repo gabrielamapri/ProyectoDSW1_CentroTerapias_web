@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { apiFetch } from '../utils/api'
 import Modal from './Modal'
 
@@ -8,6 +8,14 @@ export default function Familias({ selectedId = null, openCreate = false }){
   const [error,setError] = useState(null)
   const [expandedIds, setExpandedIds] = useState({})
   const [search, setSearch] = useState('')
+
+  // Normalizar openCreate: aceptar boolean, "true"/"1" como true; "false"/"0" como false
+  const shouldOpenCreate = useMemo(() => {
+    if (typeof openCreate === 'string') {
+      return /^(true|1)$/i.test(openCreate.trim())
+    }
+    return !!openCreate
+  }, [openCreate])
 
   useEffect(()=>{
     let mounted = true
@@ -29,9 +37,10 @@ export default function Familias({ selectedId = null, openCreate = false }){
     return ()=> { mounted = false }
   },[selectedId, search])
 
-  useEffect(()=>{
-    if(openCreate) setEditing({})
-  },[openCreate])
+  // Abrir modal solo si debe abrirse y NO hay un selectedId (prioriza detalle)
+  // Note: automatic open-on-mount removed to avoid showing the "Nueva Familia" form
+  // when navigating to the Familias view via the menu. Use the "Nueva Familia" button
+  // or explicit events to open the form.
 
   const labelMap = {
     ResponsablePrincipalNombre: 'Responsable principal - Nombre',
@@ -48,6 +57,7 @@ export default function Familias({ selectedId = null, openCreate = false }){
     ResponsablePrincipalEmail: 'Responsable principal - Email',
     responsable1Email: 'Responsable 1 - Email',
     pacientes: 'Pacientes',
+    Pacientes: 'Pacientes',
     responsable2Nombre: 'Nombres (Responsable 2)',
     Responsable2Nombre: 'Nombres (Responsable 2)',
     responsable2Apellido: 'Apellidos (Responsable 2)',
@@ -82,16 +92,16 @@ export default function Familias({ selectedId = null, openCreate = false }){
       if (lkNormalized.includes('createdat') || lkNormalized.includes('updatedat') || lkNormalized.includes('created') || lkNormalized.includes('updated')) return false
       if (lk.includes('fecha') && (lk.includes('cre') || lk.includes('actualiz') || lk.includes('creacion') || lk.includes('actualizacion') || lk.includes('creado') || lk.includes('actualizado'))) return false
       return ![
-      'ResponsablePrincipalNombre','responsablePrincipalNombre','responsable1Nombre','ResponsablePrincipalApellido','responsablePrincipalApellido','responsable1Apellido',
-      'ResponsableNombre','responsableNombre','Responsable','nombre','name',
-      'ResponsablePrincipalTelefono','responsablePrincipalTelefono','responsable1Telefono','telefonoContacto','ResponsableTelefono','responsableTelefono','Telefono',
-      'ResponsablePrincipalDireccion','responsablePrincipalDireccion','responsable1Direccion','Direccion','direccion',
-      'ResponsablePrincipalEmail','responsablePrincipalEmail','responsable1Email','email',
-      'ResponsablePrincipalDNI','ResponsablePrincipalDni','responsablePrincipalDNI','responsablePrincipalDni',
-      'responsable1DNI','responsable1Dni','Responsable1DNI','Responsable1Dni',
-      'ResponsablePrincipalRelacion','responsablePrincipalRelacion','responsable1Relacion','Relacion',
-      'pacientes','id','Id'
-    ].includes(k)
+        'ResponsablePrincipalNombre','responsablePrincipalNombre','responsable1Nombre','ResponsablePrincipalApellido','responsablePrincipalApellido','responsable1Apellido',
+        'ResponsableNombre','responsableNombre','Responsable','nombre','name',
+        'ResponsablePrincipalTelefono','responsablePrincipalTelefono','responsable1Telefono','telefonoContacto','ResponsableTelefono','responsableTelefono','Telefono',
+        'ResponsablePrincipalDireccion','responsablePrincipalDireccion','responsable1Direccion','Direccion','direccion',
+        'ResponsablePrincipalEmail','responsablePrincipalEmail','responsable1Email','email',
+        'ResponsablePrincipalDNI','ResponsablePrincipalDni','responsablePrincipalDNI','responsablePrincipalDni',
+        'responsable1DNI','responsable1Dni','Responsable1DNI','Responsable1Dni',
+        'ResponsablePrincipalRelacion','responsablePrincipalRelacion','responsable1Relacion','Relacion',
+        'pacientes','Pacientes','id','Id'
+      ].includes(k)
     }).sort()
   }
 
@@ -153,6 +163,15 @@ export default function Familias({ selectedId = null, openCreate = false }){
           const idKey = getIdKey(f)
           const extras = getExtraKeys(f)
           const isExpanded = !!expandedIds[idKey]
+
+          const pacientesArr = Array.isArray(f.pacientes) ? f.pacientes : (Array.isArray(f.Pacientes) ? f.Pacientes : [])
+          const pacientesStr = pacientesArr.length
+            ? pacientesArr
+                .map(p => (`${p.nombres ?? p.Nombres ?? ''} ${p.apellidos ?? p.Apellidos ?? ''}`).trim())
+                .filter(Boolean)
+                .join(', ')
+            : '—'
+
           return (
           <div className="card pastel" key={idKey}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
@@ -167,18 +186,9 @@ export default function Familias({ selectedId = null, openCreate = false }){
                   <div><strong>Relación:</strong> {f.ResponsablePrincipalRelacion ?? f.responsablePrincipalRelacion ?? f.responsable1Relacion ?? f.Relacion ?? '—'}</div>
                 </div>
 
-                {Array.isArray(f.pacientes) && f.pacientes.length > 0 && (
-                  <div style={{marginTop:10}}>
-                    <strong>Pacientes:</strong>
-                    <ul style={{marginTop:6}}>
-                      {f.pacientes.map(p => (
-                        <li key={p.id ?? JSON.stringify(p)}>
-                          {`${p.nombres ?? p.Nombres ?? ''} ${p.apellidos ?? p.Apellidos ?? ''}`.trim() || 'Paciente'} — {p.ageInYears ?? p.AgeInYears ?? ''} años
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <div style={{marginTop:10}}>
+                  <strong>Pacientes:</strong> <span>{pacientesStr}</span>
+                </div>
 
                 {!isExpanded ? (
                   <div style={{marginTop:10}}>
