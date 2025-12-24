@@ -208,6 +208,38 @@ export default function App() {
               <h3 style={{margin:'0 0 6px 0'}}>Notas Sesión</h3>
               <small className="muted">Apuntes clínicos por cita</small>
             </div>
+            {/* Tarjeta para Franja Excepciones */}
+            <div className="card home-card pastel" onClick={() => setView('franjaexcepciones')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#374151" strokeWidth="1.2"/><path d="M8 12h8" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Franja Excepciones</h3>
+              <small className="muted">Excepciones de atención</small>
+            </div>
+            {/* Tarjeta para Reporte: Historial de Paciente */}
+            <div className="card home-card pastel" onClick={() => setView('report-historial')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M8 8h8M8 12h8M8 16h4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Paciente</h3>
+              <small className="muted">Ver historial de un paciente</small>
+            </div>
+            {/* Tarjeta para Reporte: Historial de Citas */}
+            <div className="card home-card pastel" onClick={() => setView('report-historial-citas')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Citas</h3>
+              <small className="muted">Ver historial de citas</small>
+            </div>
+            {/* Tarjeta para Reporte: Citas Próximas */}
+            <div className="card home-card pastel" onClick={() => setView('report-citas-proximas')}>
+              <div className="icon" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M12 8v4l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+              </div>
+              <h3 style={{margin:'0 0 6px 0'}}>Reporte: Citas Próximas</h3>
+              <small className="muted">Ver próximas citas</small>
+            </div>
           </div>
         </>
       )}
