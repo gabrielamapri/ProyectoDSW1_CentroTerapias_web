@@ -213,6 +213,29 @@ export default function ReportHistorialPaciente(){
     return String(s)
   }
 
+  const exportPDF = async () => {
+    if (!pacienteId) return alert('Selecciona un paciente')
+    try {
+      const token = localStorage.getItem('ct_token')
+      const response = await fetch(
+        `/api/reportes/historial-paciente/${encodeURIComponent(pacienteId)}/export-pdf`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      )
+      if (!response.ok) throw new Error('HTTP ' + response.status)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Historial_Paciente_${pacienteId}_${new Date().getTime()}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('Error al descargar PDF: ' + err.message)
+    }
+  }
+
   const renderVal = (v) => {
     if(v === null || v === undefined) return '—'
     if(typeof v === 'object'){
@@ -234,6 +257,27 @@ export default function ReportHistorialPaciente(){
               <option key={p.id ?? p.Id} value={p.id ?? p.Id}>{`${(p.nombres||p.Nombres||'').trim()} ${(p.apellidos||p.Apellidos||'').trim()}`}</option>
             ))}
           </select>
+          <button
+            onClick={exportPDF}
+            disabled={!pacienteId}
+            title={pacienteId ? 'Descargar PDF' : 'Selecciona un paciente primero'}
+            style={{
+              background: !pacienteId ? '#f7ecfb' : '#f8d7ff',
+              color: '#5b2a86',
+              border: '1px solid #eabfff',
+              padding: '10px 16px',
+              fontSize: 15,
+              fontWeight: 600,
+              borderRadius: 10,
+              cursor: !pacienteId ? 'not-allowed' : 'pointer',
+              boxShadow: !pacienteId ? 'none' : '0 4px 10px rgba(91,42,134,0.08)',
+              transition: 'transform 120ms ease, box-shadow 120ms ease'
+            }}
+            onMouseEnter={e => { if(pacienteId) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
+          >
+            ⬇️ PDF
+          </button>
         </div>
       </div>
 
@@ -297,7 +341,8 @@ export default function ReportHistorialPaciente(){
                 const estado = r.estado ?? r.Estado
 
                 const terapeutaRaw = r.terapeutaNombre ?? r.TerapeutaNombre
-                const terapeutasEntry = terapeutasMap && (terapeutasMap[r.terapeutaId ?? r.TerapeutaId])
+                const terapeutaKey = String(r.terapeutaId ?? r.TerapeutaId ?? '')
+                const terapeutasEntry = terapeutasMap && terapeutasMap[terapeutaKey]
                 const terapeutaVal = terapeutaRaw ?? (terapeutasEntry ? (typeof terapeutasEntry === 'object' ? terapeutasEntry.name : terapeutasEntry) : undefined)
 
                 const especialRaw = r.especialidad ?? r.Especialidad ?? r.especialidadNombre ?? r.EspecialidadNombre
@@ -305,7 +350,7 @@ export default function ReportHistorialPaciente(){
 
                 const tipoRaw = r.tipoSesion ?? r.tipoSesionNombre ?? r.TipoSesion ?? r.TipoSesionNombre
                 const tipoId = r.tipoSesionId ?? r.TipoSesionId ?? (r.tipoSesion && r.tipoSesion.id) ?? (r.TipoSesion && r.TipoSesion.id)
-                const tipoVal = tipoRaw ?? (tipoId ? tiposMap[tipoId] : undefined)
+                const tipoVal = tipoRaw ?? (tipoId ? tiposMap[String(tipoId)] : undefined)
 
                 const notasVal = r.notas ?? r.Notas ?? '—'
 
