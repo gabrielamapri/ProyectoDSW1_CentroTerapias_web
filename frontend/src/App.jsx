@@ -13,6 +13,7 @@ import FranjaExcepciones from './components/FranjaExcepciones'
 
 import ReportCitasProximas from './components/ReportCitasProximas'
 import Familias from './components/Familias'
+import CitasTerapeuta from './components/CitasTerapeuta'
 import './styles.css'
 
 export default function App() {
@@ -124,6 +125,7 @@ export default function App() {
               <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>Tipo de Sesión</button>
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
+              <button className={view==='citasterapeuta'? 'active':''} onClick={() => setView('citasterapeuta')}>Citas del Terapeuta</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
               <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
               
@@ -258,6 +260,7 @@ export default function App() {
         
         
         {view === 'report-citas-proximas' && <ReportCitasProximas />}
+        {view === 'citasterapeuta' && <CitasTerapeuta />}
         {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} prefillPacienteId={selectedFamilyPatientId} />}
         {view === 'auth' && <Auth onLogin={handleLogin} />}
       </main>
