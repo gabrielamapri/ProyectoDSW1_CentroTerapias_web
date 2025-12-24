@@ -26,7 +26,7 @@ export default function Familias({ selectedId = null, openCreate = false }){
       }catch(e){ if(!mounted) return setError(e.message) }
     }
     load()
-    return ()=> mounted = false
+    return ()=> { mounted = false }
   },[selectedId, search])
 
   useEffect(()=>{
@@ -68,7 +68,6 @@ export default function Familias({ selectedId = null, openCreate = false }){
 
   function humanizeKey(k){
     if(labelMap[k]) return labelMap[k]
-    // split camelCase or snake_case into words
     return String(k).replace(/([A-Z])/g,' $1').replace(/[_\-]/g,' ').replace(/\s+/g,' ').trim().replace(/^./, s=>s.toUpperCase())
   }
 
@@ -79,7 +78,6 @@ export default function Familias({ selectedId = null, openCreate = false }){
   function getExtraKeys(f){
     return Object.keys(f).filter(k=>{
       const lk = String(k).toLowerCase()
-      // exclude creation/update date fields (english and spanish variants, with or without separators)
       const lkNormalized = lk.replace(/[_\s]/g,'')
       if (lkNormalized.includes('createdat') || lkNormalized.includes('updatedat') || lkNormalized.includes('created') || lkNormalized.includes('updated')) return false
       if (lk.includes('fecha') && (lk.includes('cre') || lk.includes('actualiz') || lk.includes('creacion') || lk.includes('actualizacion') || lk.includes('creado') || lk.includes('actualizado'))) return false
@@ -97,22 +95,37 @@ export default function Familias({ selectedId = null, openCreate = false }){
     }).sort()
   }
 
-  async function refresh(){ 
+  async function refresh(){
     const url = search ? `/api/familias?search=${encodeURIComponent(search)}` : '/api/familias'
     const res = await apiFetch(url)
-    setItems(res) 
+    setItems(res)
   }
 
   async function handleDelete(it){
     const id = it.id ?? it.Id
     if(!id) return alert('ID no disponible')
     if(!confirm('Eliminar familia?')) return
-    try{ await apiFetch(`/api/familias/${id}`,{method:'DELETE'}); await refresh() }
-    catch(e){ alert('Error: '+(e.message||e)) }
+    try{
+      const resp = await fetch(`/api/familias/${id}`,{method:'DELETE'})
+      if (!resp.ok) {
+        const body = await resp.json().catch(()=>({}))
+        throw new Error(body.message || 'No se pudo eliminar')
+      }
+      await refresh()
+    }catch(e){
+      alert('Error: '+(e.message||e))
+    }
   }
 
   async function handleSave(obj){
-    try{ const payload = {...obj}; const id = payload.Id ?? payload.id; if(id) await apiFetch(`/api/familias/${id}`,{method:'PUT', body: payload}); else await apiFetch('/api/familias',{method:'POST', body: payload}); await refresh(); setEditing(null)}catch(e){alert('Error: '+(e.message||e))}
+    try{
+      const payload = {...obj}
+      const id = payload.Id ?? payload.id
+      if(id) await apiFetch(`/api/familias/${id}`,{method:'PUT', body: payload})
+      else await apiFetch('/api/familias',{method:'POST', body: payload})
+      await refresh()
+      setEditing(null)
+    }catch(e){ alert('Error: '+(e.message||e)) }
   }
 
   if(error) return <div className="error">Error: {error}</div>
@@ -227,26 +240,26 @@ export default function Familias({ selectedId = null, openCreate = false }){
               }
               handleSave(editing)
             }}>
-            <div style={{display:'grid',gap:8}}>
-              <h4 style={{margin:'6px 0 0 0'}}>Responsable principal</h4>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(2, minmax(0,1fr))',gap:12,alignItems:'start'}}>
+              <h4 style={{margin:'6px 0 0 0',gridColumn:'1 / -1'}}>Responsable principal</h4>
               <input className="input" placeholder="Nombre" value={editing.ResponsablePrincipalNombre ?? editing.responsablePrincipalNombre ?? editing.responsable1Nombre ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalNombre:e.target.value}))} />
               <input className="input" placeholder="Apellido" value={editing.ResponsablePrincipalApellido ?? editing.responsablePrincipalApellido ?? editing.responsable1Apellido ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalApellido:e.target.value}))} />
               <input className="input" placeholder="DNI" value={editing.ResponsablePrincipalDNI ?? editing.ResponsablePrincipalDni ?? editing.responsablePrincipalDNI ?? editing.responsablePrincipalDni ?? editing.responsable1DNI ?? editing.responsable1Dni ?? editing.DNI ?? editing.dni ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalDNI:e.target.value}))} />
               <input className="input" placeholder="Teléfono" value={editing.ResponsablePrincipalTelefono ?? editing.responsablePrincipalTelefono ?? editing.responsable1Telefono ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalTelefono:e.target.value}))} />
               <input className="input" placeholder="Dirección" value={editing.ResponsablePrincipalDireccion ?? editing.responsablePrincipalDireccion ?? editing.responsable1Direccion ?? editing.Direccion ?? editing.direccion ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalDireccion:e.target.value}))} />
               <input className="input" placeholder="Email" value={editing.ResponsablePrincipalEmail ?? editing.responsablePrincipalEmail ?? editing.responsable1Email ?? editing.email ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalEmail:e.target.value}))} />
-              <input className="input" placeholder="Relación (Responsable principal)" value={editing.ResponsablePrincipalRelacion ?? editing.responsablePrincipalRelacion ?? editing.responsable1Relacion ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalRelacion:e.target.value}))} />
+              <input className="input" placeholder="Relación" value={editing.ResponsablePrincipalRelacion ?? editing.responsablePrincipalRelacion ?? editing.responsable1Relacion ?? ''} onChange={e=>setEditing(s=>({...s,ResponsablePrincipalRelacion:e.target.value}))} />
 
-              <h4 style={{margin:'6px 0 0 0'}}>Responsable 2</h4>
+              <h4 style={{margin:'6px 0 0 0',gridColumn:'1 / -1'}}>Responsable 2</h4>
               <input className="input" placeholder="Nombres (Responsable 2)" value={editing.Responsable2Nombre ?? editing.responsable2Nombre ?? editing.responsable2nombre ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2Nombre:e.target.value}))} />
               <input className="input" placeholder="Apellidos (Responsable 2)" value={editing.Responsable2Apellido ?? editing.responsable2Apellido ?? editing.responsable2apellido ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2Apellido:e.target.value}))} />
               <input className="input" placeholder="DNI (Responsable 2)" value={editing.Responsable2DNI ?? editing.responsable2Dni ?? editing.responsable2DNI ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2DNI:e.target.value}))} />
               <input className="input" placeholder="Relación (Responsable 2)" value={editing.Responsable2Relacion ?? editing.responsable2Relacion ?? editing.responsable2relacion ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2Relacion:e.target.value}))} />
               <input className="input" placeholder="Teléfono (Responsable 2)" value={editing.Responsable2Telefono ?? editing.responsable2Telefono ?? editing.responsable2telefono ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2Telefono:e.target.value}))} />
               <input className="input" placeholder="Dirección (Responsable 2)" value={editing.Responsable2Direccion ?? editing.responsable2Direccion ?? editing.responsable2direccion ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2Direccion:e.target.value}))} />
-              <input className="input" placeholder="Email (Responsable 2)" value={editing.Responsable2Email ?? editing.responsable2Email ?? editing.responsable2email ?? ''} onChange={e=>setEditing(s=>({...s,Responsable2Email:e.target.value}))} />
+              {/* Email for Responsable 2 intentionally removed per UX request */}
 
-              <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
+              <div style={{gridColumn:'1 / -1',display:'flex',justifyContent:'flex-end',gap:8}}>
                 <button className="btn" type="submit">Guardar</button>
                 <button type="button" className="btn ghost" onClick={()=>setEditing(null)}>Cancelar</button>
               </div>
