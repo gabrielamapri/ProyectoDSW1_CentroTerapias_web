@@ -9,8 +9,7 @@ import Franjas from './components/Franjas'
 import NotasSesion from './components/NotasSesion'
 import ReportHistorialPaciente from './components/ReportHistorialPaciente'
 import ReportControlAsistencia from './components/ReportControlAsistencia'
-import ReportEstadoCuenta from './components/ReportEstadoCuenta'
-import ReportProgresoNino from './components/ReportProgresoNino'
+
 import ReportCitasProximas from './components/ReportCitasProximas'
 import Familias from './components/Familias'
 import './styles.css'
@@ -110,8 +109,8 @@ export default function App() {
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
               <button className={view==='report-asistencia'? 'active':''} onClick={() => setView('report-asistencia')}>Reporte: Asistencia</button>
-              <button className={view==='report-estado-cuenta'? 'active':''} onClick={() => setView('report-estado-cuenta')}>Reporte: Estado Cuenta</button>
-              <button className={view==='report-progreso'? 'active':''} onClick={() => setView('report-progreso')}>Reporte: Progreso</button>
+              
+              
               <button className={view==='report-citas-proximas'? 'active':''} onClick={() => setView('report-citas-proximas')}>Reporte: Citas Próximas</button>
               
               <button className="logout" onClick={() => { handleLogout(); setView('auth'); }}>Cerrar sesión</button>
@@ -206,8 +205,8 @@ export default function App() {
         {view === 'notas' && <NotasSesion />}
         {view === 'report-historial' && <ReportHistorialPaciente />}
         {view === 'report-asistencia' && <ReportControlAsistencia />}
-        {view === 'report-estado-cuenta' && <ReportEstadoCuenta />}
-        {view === 'report-progreso' && <ReportProgresoNino />}
+        
+        
         {view === 'report-citas-proximas' && <ReportCitasProximas />}
         {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} />}
         {view === 'auth' && <Auth onLogin={handleLogin} />}
