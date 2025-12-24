@@ -8,7 +8,7 @@ import TipoSesiones from './components/TipoSesiones'
 import Franjas from './components/Franjas'
 import NotasSesion from './components/NotasSesion'
 import ReportHistorialPaciente from './components/ReportHistorialPaciente'
- 
+import ReportHistorialCitas from './components/ReportHistorialCitas'
 
 import ReportCitasProximas from './components/ReportCitasProximas'
 import Familias from './components/Familias'
@@ -108,7 +108,7 @@ export default function App() {
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
-              
+              <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
               
               
               <button className={view==='report-citas-proximas'? 'active':''} onClick={() => setView('report-citas-proximas')}>Reporte: Citas Próximas</button>
@@ -204,7 +204,7 @@ export default function App() {
         {view === 'franjas' && <Franjas />}
         {view === 'notas' && <NotasSesion />}
         {view === 'report-historial' && <ReportHistorialPaciente />}
-        
+        {view === 'report-historial-citas' && <ReportHistorialCitas />}
         
         
         {view === 'report-citas-proximas' && <ReportCitasProximas />}
