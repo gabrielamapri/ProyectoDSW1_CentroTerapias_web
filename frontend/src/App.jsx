@@ -19,6 +19,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('ct_token'))
   const [selectedFamilyId, setSelectedFamilyId] = useState(null)
   const [selectedFamilyOpenCreate, setSelectedFamilyOpenCreate] = useState(false)
+  const [selectedFamilyPatientId, setSelectedFamilyPatientId] = useState(null)
 
   function handleLogin(t) {
     setToken(t)
@@ -45,6 +46,7 @@ export default function App() {
       const d = e.detail || {}
       setSelectedFamilyId(d.id ?? null)
       setSelectedFamilyOpenCreate(!!d.openCreate)
+      setSelectedFamilyPatientId(d.patientId ?? null)
       setView('familias')
     }
     window.addEventListener('navigate:familia', onNavigateFamilia)
@@ -208,7 +210,7 @@ export default function App() {
         
         
         {view === 'report-citas-proximas' && <ReportCitasProximas />}
-        {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} />}
+        {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} prefillPacienteId={selectedFamilyPatientId} />}
         {view === 'auth' && <Auth onLogin={handleLogin} />}
       </main>
 

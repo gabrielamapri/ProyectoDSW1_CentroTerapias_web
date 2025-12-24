@@ -211,8 +211,8 @@ export default function Pacientes() {
                 <td>
                   {p.FamiliaId || p.familiaId ? (
                     <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:familia', { detail: { id: p.FamiliaId ?? p.familiaId } }))}>Ver familia</button>
-                  ) : (
-                    <button className="btn small ghost" onClick={() => window.dispatchEvent(new CustomEvent('navigate:familia', { detail: { id: null, openCreate: true } }))}>Añadir familia</button>
+                    ) : (
+                    <button className="btn small ghost" onClick={() => window.dispatchEvent(new CustomEvent('navigate:familia', { detail: { id: null, openCreate: true, patientId: p.Id ?? p.id } }))}>Añadir familia</button>
                   )}
                 </td>
                 <td>{p.NombreContactoEmergencia || p.nombreContactoEmergencia || '—'}</td>

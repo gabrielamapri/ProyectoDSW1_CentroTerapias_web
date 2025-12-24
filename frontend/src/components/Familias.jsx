@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { apiFetch } from '../utils/api'
 import Modal from './Modal'
 
-export default function Familias({ selectedId = null, openCreate = false }){
+export default function Familias({ selectedId = null, openCreate = false, prefillPacienteId = null }){
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
@@ -41,6 +41,15 @@ export default function Familias({ selectedId = null, openCreate = false }){
   // Note: automatic open-on-mount removed to avoid showing the "Nueva Familia" form
   // when navigating to the Familias view via the menu. Use the "Nueva Familia" button
   // or explicit events to open the form.
+  useEffect(()=>{
+    // If the app asked to open create OR a patient requested to create a family,
+    // open the create modal and remember the patient id so we can associate later.
+    if ((shouldOpenCreate || prefillPacienteId) && (selectedId === null || selectedId === undefined)){
+      const obj = {}
+      if(prefillPacienteId) obj.__associatePacienteId = prefillPacienteId
+      setEditing(obj)
+    }
+  },[shouldOpenCreate, selectedId, prefillPacienteId])
 
   const labelMap = {
     ResponsablePrincipalNombre: 'Responsable principal - Nombre',
@@ -131,9 +140,25 @@ export default function Familias({ selectedId = null, openCreate = false }){
     try{
       const payload = {...obj}
       const id = payload.Id ?? payload.id
-      if(id) await apiFetch(`/api/familias/${id}`,{method:'PUT', body: payload})
-      else await apiFetch('/api/familias',{method:'POST', body: payload})
+      let created = null
+      if(id) {
+        await apiFetch(`/api/familias/${id}`,{method:'PUT', body: payload})
+      } else {
+        created = await apiFetch('/api/familias',{method:'POST', body: payload})
+      }
       await refresh()
+
+      // If this creation was requested from a patient, associate the new family to that patient
+      const associatePatientId = obj.__associatePacienteId || obj.__associatePacienteId === 0 ? obj.__associatePacienteId : null
+      const newFamilyId = (created && (created.id ?? created.Id)) || id
+      if (associatePatientId && newFamilyId) {
+        try {
+          await apiFetch(`/api/pacientes/${associatePatientId}`, { method: 'PUT', body: { FamiliaId: newFamilyId } })
+        } catch (err) {
+          console.warn('No se pudo asociar familia al paciente automáticamente:', err)
+        }
+      }
+
       setEditing(null)
     }catch(e){ alert('Error: '+(e.message||e)) }
   }
