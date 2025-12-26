@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../utils/api';
 
-// Estilos pastel y modernos
 const styles = {
   container: { maxWidth: 700, margin: '0 auto', padding: 24, fontFamily: 'Inter, Arial, sans-serif', color: '#222' },
   title: { marginBottom: 18, color: '#2b2b2b', fontSize: 28, fontWeight: 700, textAlign: 'center' },
@@ -32,14 +31,30 @@ function CitasTerapeuta() {
   const [nota, setNota] = useState('');
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
 
-  // 1. Cargar terapeutas al montar
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userRole = (user?.role || localStorage.getItem('userRole') || '').toLowerCase();
+  const isTerapeuta = userRole === 'terapeuta';
+  const authenticatedTerapeutaId = user?.terapeutaId || (() => {
+  try {
+    const token = localStorage.getItem('ct_token') || localStorage.getItem('token');
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || null;
+  } catch { return null; }
+})();
+
   useEffect(() => {
     apiFetch('/api/terapeutas')
       .then(data => setTerapeutas(data))
       .catch(() => setTerapeutas([]));
   }, []);
 
-  // 2. Cargar citas cuando cambia el terapeuta seleccionado
+  useEffect(() => {
+    if (isTerapeuta && authenticatedTerapeutaId) {
+      setTerapeutaId(String(authenticatedTerapeutaId));
+    }
+  }, [isTerapeuta, authenticatedTerapeutaId]);
+
   useEffect(() => {
     if (terapeutaId) {
       apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
@@ -50,15 +65,12 @@ function CitasTerapeuta() {
     }
   }, [terapeutaId]);
 
-  // 3. Completar cita (abrir modal)
   const handleCompletar = (cita) => {
     setCitaSeleccionada(cita);
     setNota('');
   };
 
-  // 4. Guardar nota y marcar como completada
   const handleGuardarNota = async () => {
-    // 4.1 Guardar nota de sesión
     await apiFetch('/api/notassesion', {
       method: 'POST',
       body: {
@@ -67,7 +79,6 @@ function CitasTerapeuta() {
         notas: nota
       }
     });
-    // 4.2 Cambiar estado de la cita a Completada (solo estado y notas)
     await apiFetch(`/api/citas/${citaSeleccionada.id}`, {
       method: 'PUT',
       body: {
@@ -77,13 +88,11 @@ function CitasTerapeuta() {
     });
     setNota('');
     setCitaSeleccionada(null);
-    // Refrescar citas desde el backend para asegurar el estado correcto
     apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
       .then(data => setCitas(data))
       .catch(() => setCitas([]));
   };
 
-  // 5. Marcar como No asistió
   const handleNoAsistio = async (cita) => {
     await apiFetch(`/api/citas/${cita.id}`, {
       method: 'PUT',
@@ -97,27 +106,51 @@ function CitasTerapeuta() {
       .catch(() => setCitas([]));
   };
 
-  // Helper para saber si la cita está completada
   const isCompletada = (estado) =>
     estado === 'Completada' || estado === 'Completed';
 
-  // Helper para saber si la cita está programada
   const isProgramada = (estado) =>
     estado === 'Programada' || estado === 'Scheduled';
+console.log('authenticatedTerapeutaId:', authenticatedTerapeutaId);
+console.log('terapeutas ids:', terapeutas.map(t => t.id));
+console.log('terapeutas:', terapeutas);
+  const terapeutaAutenticado = terapeutas.find(
+    t => String(t.id) === String(authenticatedTerapeutaId)
+  );
 
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Mis Citas</h2>
       <div style={styles.selectRow}>
-        <label style={styles.label}>Seleccione terapeuta:</label>
-        <select value={terapeutaId} onChange={e => setTerapeutaId(e.target.value)} style={styles.select}>
-          <option value="">-- Seleccione --</option>
-          {terapeutas.map(t => (
-            <option key={t.id} value={t.id}>
-              {t.nombres} {t.apellidos}
-            </option>
-          ))}
-        </select>
+        <label style={styles.label}>Terapeuta:</label>
+        {isTerapeuta ? (
+          terapeutas.length === 0 ? (
+            <span style={{ fontWeight: 600, fontSize: 16, color: '#244266' }}>
+              Cargando...
+            </span>
+          ) : terapeutaAutenticado ? (
+            <span style={{ fontWeight: 600, fontSize: 16, color: '#244266' }}>
+              {terapeutaAutenticado.nombres} {terapeutaAutenticado.apellidos}
+            </span>
+          ) : (
+            <span style={{ fontWeight: 600, fontSize: 16, color: '#8a1f1f' }}>
+              No encontrado
+            </span>
+          )
+        ) : (
+          <select
+            value={terapeutaId}
+            onChange={e => setTerapeutaId(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">-- Seleccione --</option>
+            {terapeutas.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.nombres} {t.apellidos}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {terapeutaId && citas.length === 0 && <p style={styles.noCitas}>No hay citas para este terapeuta.</p>}
       <div style={styles.cardsGrid}>
@@ -158,7 +191,6 @@ function CitasTerapeuta() {
           </div>
         ))}
       </div>
-      {/* Modal para nota */}
       {citaSeleccionada && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>

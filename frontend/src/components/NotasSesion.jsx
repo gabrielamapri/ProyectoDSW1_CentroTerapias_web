@@ -54,6 +54,7 @@ export default function NotasSesion(){
   // Detectar rol desde localStorage
   const userRole = localStorage.getItem('userRole') || '';
   const isPadre = userRole.toLowerCase() === 'padre';
+  const isTerapeuta = userRole.toLowerCase() === 'terapeuta';
 
   if(error) return <div className="error">Error: {error}</div>
   if(!items) return <div className="card"><div className="spinner"/></div>
@@ -75,7 +76,7 @@ export default function NotasSesion(){
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
-          <thead><tr><th>Paciente</th><th>Terapeuta</th><th>Notas</th><th>Fecha</th>{!isPadre && <th>Acciones</th>}</tr></thead>
+          <thead><tr><th>Paciente</th><th>Terapeuta</th><th>Notas</th><th>Fecha</th>{(!isPadre && !isTerapeuta) && <th>Acciones</th>}</tr></thead>
           <tbody>
             {items.map(it=> (
               <tr key={it.id ?? it.Id}>
@@ -83,7 +84,7 @@ export default function NotasSesion(){
                 <td>{it.TerapeutaNombre ?? it.terapeutaNombre ?? (it.TerapeutaId ?? it.terapeutaId ?? '—')}</td>
                 <td style={{maxWidth:420}}>{it.Notas ?? it.notas ?? ''}</td>
                 <td>{it.FechaCreacion ? new Date(it.FechaCreacion).toLocaleString() : (it.fechaCreacion ? new Date(it.fechaCreacion).toLocaleString() : '—')}</td>
-                {!isPadre && (
+                {(!isPadre && !isTerapeuta) && (
                   <td className="actions">
                     <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
                     <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>

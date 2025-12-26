@@ -12,16 +12,44 @@ export default function Franjas(){
 
   const dayNames = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 
+  // Detectar rol y terapeutaId
+  const userRole = localStorage.getItem('userRole') || '';
+  const isTerapeuta = userRole.toLowerCase() === 'terapeuta';
+  const userId = (() => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('ct_token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload && (payload.id || payload.Id || payload.userId || payload.sub || payload.terapeutaId);
+    } catch {
+      return null;
+    }
+  })();
+
   useEffect(()=>{ 
-    const url = search ? `/api/franjas?search=${encodeURIComponent(search)}` : '/api/franjas'
-    apiFetch(url).then(setItems).catch(e=>setError(e.message||String(e))) 
-  },[search])
-  
+    let url;
+    if (isTerapeuta) {
+      url = '/api/franjas/mis-franjas';
+      if (search) url += `?search=${encodeURIComponent(search)}`;
+    } else {
+      url = search ? `/api/franjas?search=${encodeURIComponent(search)}` : '/api/franjas';
+    }
+    apiFetch(url).then(res => {
+      setItems(res);
+    }).catch(e=>setError(e.message||String(e))) 
+  },[search, isTerapeuta])
+
   useEffect(()=>{ apiFetch('/api/terapeutas').then(setTherapists).catch(()=>setTherapists([])) },[])
 
   async function refresh(){ 
     try{ 
-      const url = search ? `/api/franjas?search=${encodeURIComponent(search)}` : '/api/franjas'
+      let url;
+      if (isTerapeuta) {
+        url = '/api/franjas/mis-franjas';
+        if (search) url += `?search=${encodeURIComponent(search)}`;
+      } else {
+        url = search ? `/api/franjas?search=${encodeURIComponent(search)}` : '/api/franjas';
+      }
       const res = await apiFetch(url)
       setItems(res) 
     }catch(e){ setError(e.message||String(e)) } 
@@ -176,7 +204,7 @@ export default function Franjas(){
       }
       await refresh()
       setEditing(null)
-    }catch(e){ alert('Error: '+(e.message||String(e))) }
+    }catch(e){ alert('Error: '+(e.message||e)) }
   }
 
   if(error) return <div style={styles.error}>Error: {error}</div>
@@ -420,4 +448,3 @@ const styles = {
   spinner: { width:36, height:36, borderRadius:'50%', border:'4px solid #f0f0f0', borderTop:'4px solid #6C5CE7', animation:'spin 1s linear infinite' },
   error: { padding:12, background:'#ffe6e6', color:'#8a1f1f', borderRadius:8 }
 }
-

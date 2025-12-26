@@ -35,10 +35,22 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    const err = new Error(text || res.statusText || `HTTP ${res.status}`)
-    err.status = res.status
-    throw err
+    const contentType = res.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const errorObj = await res.json().catch(() => null)
+      if (errorObj && typeof errorObj === 'object') {
+        const err = new Error(errorObj.detail || errorObj.message || res.statusText || `HTTP ${res.status}`)
+        Object.assign(err, errorObj)
+        err.status = res.status
+        throw err
+      }
+      throw new Error(res.statusText || `HTTP ${res.status}`)
+    } else {
+      const text = await res.text().catch(() => '')
+      const err = new Error(text || res.statusText || `HTTP ${res.status}`)
+      err.status = res.status
+      throw err
+    }
   }
 
   const contentType = res.headers.get('content-type') || ''
@@ -79,10 +91,22 @@ export async function apiFetchWithMeta(path, options = {}) {
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    const err = new Error(text || res.statusText || `HTTP ${res.status}`)
-    err.status = res.status
-    throw err
+    const contentType = res.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const errorObj = await res.json().catch(() => null)
+      if (errorObj && typeof errorObj === 'object') {
+        const err = new Error(errorObj.detail || errorObj.message || res.statusText || `HTTP ${res.status}`)
+        Object.assign(err, errorObj)
+        err.status = res.status
+        throw err
+      }
+      throw new Error(res.statusText || `HTTP ${res.status}`)
+    } else {
+      const text = await res.text().catch(() => '')
+      const err = new Error(text || res.statusText || `HTTP ${res.status}`)
+      err.status = res.status
+      throw err
+    }
   }
 
   const contentType = res.headers.get('content-type') || ''

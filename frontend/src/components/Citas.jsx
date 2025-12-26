@@ -591,46 +591,48 @@ export default function Citas() {
   function handleEdit(item) { openReprogramModal(item) }
   function handleView(item) { setViewItem(item); setShowView(true) }
 
-  async function handleReprogramSubmit(e) {
-    e?.preventDefault?.()
-    setReprogramError(null)
-    if (!reprogramItem) return setReprogramError('Item inválido')
-    if (!reprogramForm.FechaDate || !reprogramForm.FechaTime) return setReprogramError('Seleccione fecha y hora')
-    setReprogramLoading(true)
-    try {
-      let fechaLocalIso
-      if (reprogramForm.FechaTime && (reprogramForm.FechaTime.includes('T') || reprogramForm.FechaTime.includes('-'))) {
-        const parsed = parseIsoSafe(reprogramForm.FechaTime)
-        if (!parsed) return setReprogramError('Fecha inválida')
-        fechaLocalIso = formatLocalIso(parsed)
-      } else {
-        fechaLocalIso = buildIsoFromLocalYmdAndTime(reprogramForm.FechaDate, reprogramForm.FechaTime)
-      }
-      const payload = { Fecha: fechaLocalIso, ...(reprogramForm.DuracionMinutos ? { DuracionMinutos: Number(reprogramForm.DuracionMinutos) } : {} ) }
-      let result = await apiFetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', body: payload }).catch(async () => {
-        const res = await fetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        if (!res.ok) throw new Error('HTTP ' + res.status)
-        return res.json().catch(()=>null)
-      })
-      const normalized = normalizeCitas(Array.isArray(result) ? result : result ? [result] : [])
-      if (normalized.length > 0) {
-        const updated = normalized[0]
-        setItems(prev => (prev || []).map(i => i.id === updated.id ? updated : i))
-      } else {
-        const r = await apiFetch('/api/citas')
-        setItems(normalizeCitas(Array.isArray(r) ? r : r))
-      }
-      alert('Cita reprogramada correctamente.')
-      setShowReprogram(false)
-      setReprogramItem(null)
-      setReprogramAvailableDates(new Set())
-      setReprogramAvailableSlots([])
-    } catch (err) {
-      setReprogramError(err?.message || 'Error al reprogramar. Intenta más tarde.')
-    } finally {
-      setReprogramLoading(false)
+ async function handleReprogramSubmit(e) {
+  e?.preventDefault?.()
+  setReprogramError(null)
+  if (!reprogramItem) return setReprogramError('Item inválido')
+  if (!reprogramForm.FechaDate || !reprogramForm.FechaTime) return setReprogramError('Seleccione fecha y hora')
+  setReprogramLoading(true)
+  try {
+    let fechaLocalIso
+    if (reprogramForm.FechaTime && (reprogramForm.FechaTime.includes('T') || reprogramForm.FechaTime.includes('-'))) {
+      const parsed = parseIsoSafe(reprogramForm.FechaTime)
+      if (!parsed) return setReprogramError('Fecha inválida')
+      fechaLocalIso = formatLocalIso(parsed)
+    } else {
+      fechaLocalIso = buildIsoFromLocalYmdAndTime(reprogramForm.FechaDate, reprogramForm.FechaTime)
     }
+    const payload = { Fecha: fechaLocalIso, ...(reprogramForm.DuracionMinutos ? { DuracionMinutos: Number(reprogramForm.DuracionMinutos) } : {} ) }
+    let result = await apiFetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', body: payload }).catch(async () => {
+      const res = await fetch(`/api/citas/${reprogramItem.id}/reprogramar`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      return res.json().catch(()=>null)
+    })
+    const normalized = normalizeCitas(Array.isArray(result) ? result : result ? [result] : [])
+    if (normalized.length > 0) {
+      const updated = normalized[0]
+      setItems(prev => (prev || []).map(i => i.id === updated.id ? updated : i))
+    } else {
+      const r = await apiFetch('/api/citas')
+      setItems(normalizeCitas(Array.isArray(r) ? r : r))
+    }
+    alert('Cita reprogramada correctamente.')
+    setShowReprogram(false)
+    setReprogramItem(null)
+    setReprogramAvailableDates(new Set())
+    setReprogramAvailableSlots([])
+  } catch (err) {
+    // Si el error es un objeto ProblemDetails, usa el campo detail
+    const msg = err?.detail || err?.message || 'Error al reprogramar. Intenta más tarde.'
+    setReprogramError(msg)
+  } finally {
+    setReprogramLoading(false)
   }
+}
 
   const modifiers = { available: (date) => (availableDates?.size || 0) > 0 && availableDates.has(toYmdLocal(date)) }
   const modifiersClassNames = { available: 'available-day' }
@@ -647,6 +649,8 @@ export default function Citas() {
       })
     : items;
 
+  const userRole = getUserRole();
+  const isTerapeuta = userRole && userRole.toLowerCase() === 'terapeuta';
   return (
     <>
       <style>{`
@@ -690,10 +694,12 @@ export default function Citas() {
               autoComplete="off"
               spellCheck={false}
             />
-            <button className="btn" onClick={()=>{
-              setCreateForm({ PacienteId: '', TerapeutaId: '', TipoSesionId: '', FechaDate: '', FechaTime: '', DuracionMinutos: 45, Motivo: '' });
-              setShowCreate(true);
-            }}>Nueva Cita</button>
+            {!isTerapeuta && (
+              <button className="btn" onClick={()=>{
+                setCreateForm({ PacienteId: '', TerapeutaId: '', TipoSesionId: '', FechaDate: '', FechaTime: '', DuracionMinutos: 45, Motivo: '' });
+                setShowCreate(true);
+              }}>Nueva Cita</button>
+            )}
           </div>
         </div>
 
@@ -957,18 +963,21 @@ export default function Citas() {
                     {c.pacienteFamiliaId && (
                       <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:familia', { detail: { id: c.pacienteFamiliaId } }))} style={{ marginLeft: 6 }}>Ver familia</button>
                     )}
-                    {['Programado','Programada','Scheduled'].includes(translateEstado(c.estado)) && (
-                      <button className="btn small" onClick={() => openReprogramModal(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
-                    )}
-                    <button
-                      className="btn small cancel"
-                      onClick={() => handleCancel(c)}
-                      style={{ marginLeft: 6 }}
-                      disabled={!isAuthed}
-                      title={!isAuthed ? 'Debe iniciar sesión para anular' : ''}
-                    >
-                      Anular
-                    </button>
+                    {!isTerapeuta && [
+                      ['Programado','Programada','Scheduled'].includes(translateEstado(c.estado)) && (
+                        <button className="btn small" onClick={() => openReprogramModal(c)} style={{ marginLeft: 6 }}>Reprogramar</button>
+                      ),
+                      <button
+                        className="btn small cancel"
+                        onClick={() => handleCancel(c)}
+                        style={{ marginLeft: 6 }}
+                        disabled={!isAuthed}
+                        title={!isAuthed ? 'Debe iniciar sesión para anular' : ''}
+                        key="anular"
+                      >
+                        Anular
+                      </button>
+                    ]}
                   </div>
                 </div>
               </div>

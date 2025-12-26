@@ -103,6 +103,7 @@ export default function App() {
 
   const isPadre = userRole && userRole.toLowerCase() === 'padre';
   const isFamiliaPadre = isPadre && userEmail && userEmail.trim().toLowerCase() === 'familia@centro.local';
+  const isTerapeuta = userRole && userRole.toLowerCase() === 'terapeuta';
   return (
     <div className="app-container">
       <header className="site-header">
@@ -157,7 +158,7 @@ export default function App() {
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
               {/* Ocultar reportes para rol padre */}
-              {!isPadre && (
+              {!isPadre && !isTerapeuta && (
                 <>
                   <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
                   <button className={view==='report-citas-proximas'? 'active':''} onClick={() => setView('report-citas-proximas')}>Reporte: Citas Próximas</button>
@@ -263,7 +264,7 @@ export default function App() {
               <small className="muted">Ver historial de un paciente</small>
             </div>
             {/* Tarjetas de reportes ocultas para rol padre */}
-            {!isPadre && (
+            {!isPadre && !isTerapeuta && (
               <>
                 {/* Tarjeta para Reporte: Historial de Citas */}
                 <div className="card home-card pastel" onClick={() => setView('report-historial-citas')}>
@@ -307,8 +308,8 @@ export default function App() {
         {view === 'franjaexcepciones' && <FranjaExcepciones />}
         {view === 'notas' && <NotasSesion />}
         {view === 'report-historial' && <ReportHistorialPaciente />}
-        {view === 'report-historial-citas' && <ReportHistorialCitas />}
-        {view === 'report-citas-proximas' && <ReportCitasProximas />}
+        {!isTerapeuta && view === 'report-historial-citas' && <ReportHistorialCitas />}
+        {!isTerapeuta && view === 'report-citas-proximas' && <ReportCitasProximas />}
         {view === 'citasterapeuta' && <CitasTerapeuta />}
         {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} prefillPacienteId={selectedFamilyPatientId} userRole={userRole} />}
         {view === 'auth' && <Auth onLogin={handleLogin} />}
