@@ -3,6 +3,7 @@ import { apiFetch } from '../utils/api'
 import Modal from './Modal'
 
 export default function Especialidades(){
+    const userRole = localStorage.getItem('userRole') || '';
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
@@ -40,6 +41,27 @@ export default function Especialidades(){
 
   if(error) return <div className="error">Error: {error}</div>
   if(!items) return <div className="card"><div className="spinner"/></div>
+
+  if (userRole.toLowerCase() === 'padre') {
+    return (
+      <section>
+        <h2>Especialidades</h2>
+        <div style={{marginTop:12}} className="card">
+          <table className="table pastel">
+            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+            <tbody>
+              {items.map(it=> (
+                <tr key={it.id ?? it.Id}>
+                  <td>{it.Nombre ?? it.nombre ?? '—'}</td>
+                  <td style={{maxWidth:360}}>{it.Descripcion ?? it.descripcion ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section>

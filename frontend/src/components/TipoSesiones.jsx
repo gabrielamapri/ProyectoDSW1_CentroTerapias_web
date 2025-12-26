@@ -1,12 +1,19 @@
+
 import React, { useEffect, useState } from 'react'
 import { apiFetch } from '../utils/api'
 import Modal from './Modal'
+
 
 export default function TipoSesiones(){
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
   const [search, setSearch] = useState('')
+
+  // Detect role/email (usar claves correctas de localStorage)
+  const userRole = localStorage.getItem('userRole') || '';
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const isPadre = userRole.toLowerCase() === 'padre' && userEmail.trim().toLowerCase() === 'familia@centro.local';
 
   useEffect(()=>{
     const endpoints = ['/api/tiposesiones','/api/tiposSesiones','/api/tipos-sesiones','/api/tipoSesiones','/api/TipoSesiones']
@@ -46,24 +53,66 @@ export default function TipoSesiones(){
   if(error) return <div className="error">Error: {error}</div>
   if(!items) return <div className="card"><div className="spinner"/></div>
 
+  // Restricción para rol Padre (familia@centro.local)
+  if(isPadre){
+    return (
+      <section>
+        <h2>Tipos de Sesión</h2>
+        <div style={{marginTop:12}} className="card">
+          <table className="table pastel">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Duración (min)</th>
+                <th>Precio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(it=> (
+                <tr key={it.id ?? it.Id}>
+                  <td>{it.Nombre ?? it.nombre ?? it.name ?? '—'}</td>
+                  <td>{it.Descripcion ?? it.descripcion ?? ''}</td>
+                  <td>{it.DuracionMinutos ?? it.duracionMinutos ?? it.duracion ?? '—'}</td>
+                  <td>{(it.Precio ?? it.precio ?? null) != null ? (it.Precio ?? it.precio).toString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
+  // ...resto para otros roles...
   return (
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Tipos de Sesión</h2>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <input 
-            placeholder="Buscar por nombre" 
-            className="input" 
-            style={{width:280}} 
-            value={search} 
-            onChange={e=>setSearch(e.target.value)} 
-          />
-          <button className="btn" onClick={()=>setEditing({ DuracionMinutos: 45 })}>Nuevo Tipo</button>
-        </div>
+        {!(role === 'Padre' && email === 'familia@centro.local') && (
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input 
+              placeholder="Buscar por nombre" 
+              className="input" 
+              style={{width:280}} 
+              value={search} 
+              onChange={e=>setSearch(e.target.value)} 
+            />
+            <button className="btn" onClick={()=>setEditing({ DuracionMinutos: 45 })}>Nuevo Tipo</button>
+          </div>
+        )}
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
-            <thead><tr><th>Nombre</th><th>Descripción</th><th>Duración (min)</th><th>Precio</th><th>Acciones</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Duración (min)</th>
+                <th>Precio</th>
+                {!(role === 'Padre' && email === 'familia@centro.local') && <th>Acciones</th>}
+              </tr>
+            </thead>
           <tbody>
             {items.map(it=> (
               <tr key={it.id ?? it.Id}>
@@ -71,17 +120,19 @@ export default function TipoSesiones(){
                   <td>{it.Descripcion ?? it.descripcion ?? ''}</td>
                   <td>{it.DuracionMinutos ?? it.duracionMinutos ?? it.duracion ?? '—'}</td>
                   <td>{(it.Precio ?? it.precio ?? null) != null ? (it.Precio ?? it.precio).toString() : '—'}</td>
-                <td className="actions">
-                  <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
-                  <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>
-                </td>
+                {!(role === 'Padre' && email === 'familia@centro.local') && (
+                  <td className="actions">
+                    <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
+                    <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {editing && (
+      {editing && !(role === 'Padre' && email === 'familia@centro.local') && (
         <Modal title={`Tipo ${(editing.Nombre??editing.nombre)||''}`} onClose={()=>setEditing(null)}>
           <form onSubmit={e=>{e.preventDefault(); const payload = {...editing}; if(payload.DuracionMinutos !== undefined) payload.DuracionMinutos = Number(payload.DuracionMinutos); if(payload.duracionMinutos !== undefined) payload.duracionMinutos = Number(payload.duracionMinutos); if(payload.Precio !== undefined) payload.Precio = Number(payload.Precio); if(payload.precio !== undefined) payload.precio = Number(payload.precio); handleSave(payload)}}>
             <div style={{display:'grid',gap:8}}>

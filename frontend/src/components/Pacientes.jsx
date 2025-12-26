@@ -4,6 +4,24 @@ import Modal from './Modal'
 
 export default function Pacientes() {
   const [items, setItems] = useState(null)
+  // Función robusta para obtener el rol
+  function getUserRole() {
+    const role = localStorage.getItem('userRole');
+    if (role) return role;
+    try {
+      const token = localStorage.getItem('ct_token') || localStorage.getItem('token');
+      if (!token) return '';
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const roleUrl = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+      const roleUrlAlt = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role";
+      return payload?.role || payload?.Role || payload?.[roleUrl] || payload?.[roleUrlAlt] || '';
+    } catch {
+      return '';
+    }
+  }
+  const userRole = getUserRole();
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const [miFamiliaId, setMiFamiliaId] = useState(null);
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(null)
   const [sexoOptions, setSexoOptions] = useState(null)
@@ -21,7 +39,10 @@ export default function Pacientes() {
         q.push(`page=${page}`)
         q.push(`pageSize=${pageSize}`)
         if (search) q.push(`search=${encodeURIComponent(search)}`)
-        const ep = `/api/pacientes?${q.join('&')}`
+        const isPadre = userRole && userRole.toLowerCase() === 'padre';
+        const ep = isPadre
+          ? '/api/pacientes/mis-hijos'
+          : `/api/pacientes?${q.join('&')}`;
         const res = await apiFetchWithMeta(ep)
         if (!mounted) return
         setItems(res.data)
@@ -34,7 +55,7 @@ export default function Pacientes() {
     }
     load()
     return () => { mounted = false }
-  }, [page, pageSize, search])
+  }, [page, pageSize, search, userRole])
 
   // Normalize incoming sexo values to a code string ('0','1','2','3') or ''
   function normalizeSexoCode(v) {
@@ -80,13 +101,17 @@ export default function Pacientes() {
         const res = await apiFetch('/api/familias')
         if (!mounted) return
         setFamiliasList(Array.isArray(res) ? res : [])
+        if (userRole.toLowerCase() === 'padre' && userEmail) {
+          const miFamilia = res.find(f => (f.ResponsablePrincipalEmail ?? f.responsablePrincipalEmail ?? f.responsable1Email ?? f.email ?? '').trim().toLowerCase() === userEmail.trim().toLowerCase());
+          setMiFamiliaId(miFamilia ? (miFamilia.id ?? miFamilia.Id) : null);
+        }
       } catch (e) {
         // ignore; keep empty list
       }
     }
     loadFamilias()
     return () => { mounted = false }
-  }, [])
+  }, [userRole, userEmail])
 
   useEffect(() => {
     function onOpenCreate(e){
@@ -111,10 +136,13 @@ export default function Pacientes() {
       q.push(`page=${page}`)
       q.push(`pageSize=${pageSize}`)
       if (search) q.push(`search=${encodeURIComponent(search)}`)
-      
       async function reloadData() {
         try {
-          const res = await apiFetchWithMeta(`/api/pacientes?${q.join('&')}`)
+          const isPadre = userRole && userRole.toLowerCase() === 'padre';
+          const ep = isPadre
+            ? '/api/pacientes/mis-hijos'
+            : `/api/pacientes?${q.join('&')}`;
+          const res = await apiFetchWithMeta(ep)
           setItems(res.data)
           const cnt = res.headers.get('x-total-count') || (Array.isArray(res.data) ? String(res.data.length) : '0')
           setTotal(Number(cnt))
@@ -126,7 +154,7 @@ export default function Pacientes() {
     }
     window.addEventListener('refresh:pacientes', onRefreshPacientes)
     return () => window.removeEventListener('refresh:pacientes', onRefreshPacientes)
-  }, [page, pageSize, search])
+  }, [page, pageSize, search, userRole])
 
   async function handleDelete(p) {
     const id = p.Id ?? p.id
@@ -178,9 +206,11 @@ export default function Pacientes() {
         return alert('Si proporciona contacto de emergencia, debe incluir nombre y número')
       }
       try { console.log('PACIENTE_PAYLOAD', payload) } catch (e) {}
+      const isPadre = userRole && userRole.toLowerCase() === 'padre';
       if (id) {
         await apiFetch(`/api/pacientes/${id}`, { method: 'PUT', body: payload })
       } else {
+        // Siempre usar /api/pacientes para crear paciente (POST), incluso para Padre
         await apiFetch('/api/pacientes', { method: 'POST', body: payload })
       }
       const q = []
@@ -197,17 +227,57 @@ export default function Pacientes() {
 
   const isEditingExisting = !!(editing && (editing.Id ?? editing.id))
 
-  if (error) return <div className="error">Error: {error}</div>
-  if (!items) return <div className="card"><div className="spinner" /></div>
+  // Mostrar solo vista informativa para el rol padre
+  if (userRole.toLowerCase() === 'padre') {
+    return (
+      <section>
+        <h2>Pacientes</h2>
+        <div style={{marginTop:12}} className="card">
+          <table className="table pastel">
+            <thead>
+              <tr>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>DNI</th>
+                <th>Fecha Nacimiento</th>
+                <th>Sexo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(items||[]).map(p => (
+                <tr key={p.id ?? p.Id}>
+                  <td>{p.nombres ?? p.Nombres ?? ''}</td>
+                  <td>{p.apellidos ?? p.Apellidos ?? ''}</td>
+                  <td>{p.dni ?? p.DNI ?? ''}</td>
+                  <td>{p.fechaNacimiento ? new Date(p.fechaNacimiento).toLocaleDateString() : (p.FechaNacimiento ? new Date(p.FechaNacimiento).toLocaleDateString() : '')}</td>
+                  <td>{p.sexo ?? p.Sexo ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
 
+  if (error) return <div className="error">Error: {error}</div>;
+  if (!items) return <div className="card"><div className="spinner" /></div>;
+
+  // Filtrar pacientes para el rol Padre
+  let filteredItems = items;
+  if (userRole.toLowerCase() === 'padre' && miFamiliaId) {
+    filteredItems = items.filter(p => String(p.FamiliaId ?? p.familiaId) === String(miFamiliaId));
+  }
   return (
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Pacientes</h2>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <input placeholder="Buscar por nombre, apellido o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
-          <button className="btn" onClick={() => setEditing({ __showFamilySelect: false })}>Nuevo Paciente</button>
-        </div>
+        {(userRole.toLowerCase() !== 'padre') && (
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <input placeholder="Buscar por nombre, apellido o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
+            <button className="btn" onClick={() => setEditing({ __showFamilySelect: false })}>Nuevo Paciente</button>
+          </div>
+        )}
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
@@ -225,7 +295,7 @@ export default function Pacientes() {
             </tr>
           </thead>
           <tbody>
-            {(items || []).map((p) => (
+            {(filteredItems || []).map((p) => (
               <tr key={p.Id || p.id || JSON.stringify(p)}>
                 <td>{p.Nombres || p.nombres || '—'}</td>
                 <td>{p.Apellidos || p.apellidos || '—'}</td>
@@ -243,7 +313,9 @@ export default function Pacientes() {
                 <td>{p.NumeroContactoEmergencia || p.numeroContactoEmergencia || '—'}</td>
                 <td className="actions">
                   <button className="btn small" onClick={() => handleEdit(p)}>Editar</button>
-                  <button className="btn small ghost" onClick={() => handleDelete(p)}>Eliminar</button>
+                  {(userRole.toLowerCase() !== 'padre') && (
+                    <button className="btn small ghost" onClick={() => handleDelete(p)}>Eliminar</button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -320,5 +392,5 @@ export default function Pacientes() {
         </Modal>
       )}
     </section>
-  )
+  );
 }

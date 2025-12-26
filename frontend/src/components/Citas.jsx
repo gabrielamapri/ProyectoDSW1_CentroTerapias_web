@@ -1,3 +1,4 @@
+  // ...existing code...
 import React, { useEffect, useState, useRef } from 'react'
 import { apiFetch } from '../utils/api'
 import Modal from './Modal'
@@ -5,6 +6,24 @@ import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 
 console.debug('[Citas] module loaded (improved)')
+
+// --- INICIO: función para obtener el rol del usuario ---
+function getUserRole() {
+  const role = localStorage.getItem('userRole');
+  if (role) return role;
+  try {
+    const token = localStorage.getItem('ct_token') || localStorage.getItem('token');
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const roleUrl = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+    const roleUrlAlt = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role";
+    return payload?.role || payload?.Role || payload?.[roleUrl] || payload?.[roleUrlAlt] || null;
+  } catch {
+    return null;
+  }
+}
+// --- FIN función para obtener el rol del usuario ---
+
 
 export default function Citas() {
   console.debug('[Citas] render start')
@@ -48,6 +67,8 @@ export default function Citas() {
   const [reprogramLoadingAvailableDates, setReprogramLoadingAvailableDates] = useState(false)
   const [reprogramAvailableSlots, setReprogramAvailableSlots] = useState([])
   const [reprogramLoadingSlots, setReprogramLoadingSlots] = useState(false)
+
+  // ...existing code...
 
   function toYmdLocal(d) {
     if (!d) return ''
@@ -117,16 +138,18 @@ export default function Citas() {
     const s = String(estado).toLowerCase()
     return !(s.includes('cancel') || s.includes('anul'))
   }
+  // --- INICIO: función para traducir el estado de la cita ---
   function translateEstado(raw) {
-    if (raw === null || raw === undefined) return 'Pendiente'
-    const s = String(raw).toLowerCase()
-    if (s.includes('sched') || s.includes('program') || s.includes('agend') ) return 'Programado'
-    if (s.includes('cancel') || s.includes('anul')) return 'Anulado'
-    if (s.includes('pend')) return 'Pendiente'
-    if (s.includes('done') || s.includes('complete')) return 'Completada'
-    const str = String(raw)
-    return str.charAt(0).toUpperCase() + str.slice(1)
+    if (raw === null || raw === undefined) return 'Pendiente';
+    const s = String(raw).toLowerCase();
+    if (s.includes('sched') || s.includes('program') || s.includes('agend')) return 'Programado';
+    if (s.includes('cancel') || s.includes('anul')) return 'Anulado';
+    if (s.includes('pend')) return 'Pendiente';
+    if (s.includes('done') || s.includes('complete')) return 'Completada';
+    const str = String(raw);
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
+  // --- FIN función para traducir el estado de la cita ---
   function normalizeCitas(list) {
     const safe = Array.isArray(list) ? list : (list && list.value) ? list.value : []
     return (safe || []).map(c => {
@@ -191,11 +214,15 @@ export default function Citas() {
       try {
         setLoading(true)
         let raw = null
+        // Detectar rol para endpoint correcto
+        const userRole = getUserRole();
+        const isPadre = userRole && userRole.toLowerCase() === 'padre';
+        const citasUrl = isPadre ? '/api/citas/mis-citas' : '/api/citas';
         try {
-          raw = await apiFetch('/api/citas')
+          raw = await apiFetch(citasUrl)
         } catch {}
         if (raw == null) {
-          const res = await fetch('/api/citas', { credentials: 'include', signal: controller.signal })
+          const res = await fetch(citasUrl, { credentials: 'include', signal: controller.signal })
           if (!res.ok) throw new Error('HTTP ' + res.status)
           raw = await res.json().catch(()=>[])
         }
@@ -221,7 +248,10 @@ export default function Citas() {
     debounceRef.current = setTimeout(async () => {
       try {
         setLoading(true)
-        const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
+        const userRole = getUserRole();
+        const isPadre = userRole && userRole.toLowerCase() === 'padre';
+        const baseUrl = isPadre ? '/api/citas/mis-citas' : '/api/citas';
+        const url = search ? `${baseUrl}?search=${encodeURIComponent(search)}` : baseUrl;
         let raw = null
         try {
           raw = await apiFetch(url)
@@ -244,7 +274,10 @@ export default function Citas() {
   }, [search])
 
   async function refresh(){
-    const url = search ? `/api/citas?search=${encodeURIComponent(search)}` : '/api/citas'
+    const userRole = getUserRole();
+    const isPadre = userRole && userRole.toLowerCase() === 'padre';
+    const baseUrl = isPadre ? '/api/citas/mis-citas' : '/api/citas';
+    const url = search ? `${baseUrl}?search=${encodeURIComponent(search)}` : baseUrl;
     const raw = await apiFetch(url).catch(async () => {
       const res = await fetch(url, { credentials: 'include' })
       return res.ok ? res.json() : []
@@ -294,13 +327,18 @@ export default function Citas() {
         DuracionMinutos: Number(createForm.DuracionMinutos) || 45,
         Motivo: createForm.Motivo || ''
       }
+      // Siempre usar POST /api/citas para crear, sin importar el rol
       await apiFetch('/api/citas', { method: 'POST', body: payload })
       alert('Cita creada correctamente.')
       setShowCreate(false)
 
-      const r = await apiFetch('/api/citas')
-      const normalized = normalizeCitas(Array.isArray(r) ? r : r)
-      setItems(normalized)
+      // Refrescar usando el endpoint correcto según el rol
+      const userRole = getUserRole();
+      const isPadre = userRole && userRole.toLowerCase() === 'padre';
+      const citasUrl = isPadre ? '/api/citas/mis-citas' : '/api/citas';
+      const r = await apiFetch(citasUrl);
+      const normalized = normalizeCitas(Array.isArray(r) ? r : r);
+      setItems(normalized);
     } catch (e) {
       setCreateError(e?.message || 'Error de servidor. Intenta más tarde.')
     }
@@ -311,8 +349,11 @@ export default function Citas() {
     if(!showCreate) return
     (async()=> {
       try{
+        const userRole = getUserRole();
+        const isPadre = userRole && userRole.toLowerCase() === 'padre';
+        const pacientesUrl = isPadre ? '/api/pacientes/mis-hijos' : '/api/pacientes';
         const [ps, tt] = await Promise.all([
-          apiFetch('/api/pacientes').catch(()=>[]),
+          apiFetch(pacientesUrl).catch(()=>[]),
           apiFetch('/api/TipoSesiones').catch(()=>[])
         ])
         if(!mounted) return
@@ -327,31 +368,39 @@ export default function Citas() {
   },[showCreate])
 
   async function onTipoSesionChange(e) {
-    const tipoId = Number(e.target.value) || null
-    setCreateForm(s => ({ ...s, TipoSesionId: tipoId, TerapeutaId: '', FechaDate: '', FechaTime: '' }))
-    setAvailableDates(new Set())
-    setAvailableSlots([])
-    if (!tipoId) { setTerapeutasList([]); return }
+    // Solo se usa para admin, para padre el handler está inline
+    const tipoId = Number(e.target.value);
+    setCreateForm(s => ({ ...s, TipoSesionId: tipoId, TerapeutaId: '', FechaDate: '', FechaTime: '' }));
+    setAvailableDates(new Set());
+    setAvailableSlots([]);
+    if ((!tipoId && tipoId !== 0)) { setTerapeutasList([]); return; }
 
-    const tipo = (tiposList || []).find(t => Number(t.Id ?? t.id) === tipoId)
-    let especialidadId = tipo?.EspecialidadId ?? tipo?.especialidadId ?? tipo?.especialidad?.id
+    // Para admin: buscar por id, para padre: usar índice
+    let tipo;
+    if (Array.isArray(tiposList) && tiposList.length > 0 && tiposList[0].Id === undefined && tiposList[0].id === undefined) {
+      // Para padre: tipoId es el índice
+      tipo = tiposList[tipoId];
+    } else {
+      tipo = (tiposList || []).find(t => Number(t.Id ?? t.id) === tipoId);
+    }
+    let especialidadId = tipo?.EspecialidadId ?? tipo?.especialidadId ?? tipo?.especialidad?.id;
     if (!especialidadId) {
       try {
-        const detalle = await apiFetch(`/api/TipoSesiones/${tipoId}`)
-        especialidadId = detalle?.EspecialidadId ?? detalle?.especialidadId ?? detalle?.especialidad?.id
+        const detalle = await apiFetch(`/api/TipoSesiones/${tipoId}`);
+        especialidadId = detalle?.EspecialidadId ?? detalle?.especialidadId ?? detalle?.especialidad?.id;
       } catch {
-        setTerapeutasList([])
-        return
+        setTerapeutasList([]);
+        return;
       }
     }
     try {
-      setLoadingTerapeutasCreate(true)
-      const terapeutas = await apiFetch(`/api/terapeutas?especialidadId=${especialidadId}`)
-      setTerapeutasList(Array.isArray(terapeutas) ? terapeutas : (terapeutas && terapeutas.value) ? terapeutas.value : [])
+      setLoadingTerapeutasCreate(true);
+      const terapeutas = await apiFetch(`/api/terapeutas?especialidadId=${especialidadId}`);
+      setTerapeutasList(Array.isArray(terapeutas) ? terapeutas : (terapeutas && terapeutas.value) ? terapeutas.value : []);
     } catch {
-      setTerapeutasList([])
+      setTerapeutasList([]);
     } finally {
-      setLoadingTerapeutasCreate(false)
+      setLoadingTerapeutasCreate(false);
     }
   }
 
@@ -465,24 +514,23 @@ export default function Citas() {
     if (!terapeutaId) { setReprogramAvailableDates(new Set()); return }
     try {
       setReprogramLoadingAvailableDates(true)
-      const start = new Date()
-      const end = new Date()
-      end.setDate(start.getDate() + 30)
-      const startIso = toYmdLocal(start)
-      const endIso = toYmdLocal(end)
-      const url = `/api/franjas/${terapeutaId}/available-dates?start=${startIso}&end=${endIso}&duracion=${duracion || 45}`
-      const res = await apiFetch(url)
-      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : []
+      const start = new Date();
+      const end = new Date(start.getFullYear() + 1, 11, 31); // hasta fin de 2026
+      const startIso = toYmdLocal(start);
+      const endIso = toYmdLocal(end);
+      const url = `/api/franjas/${terapeutaId}/available-dates?start=${startIso}&end=${endIso}&duracion=${duracion || 45}`;
+      const res = await apiFetch(url);
+      const arr = Array.isArray(res) ? res : (res && res.value) ? res.value : [];
       const set = new Set((arr || []).map(s => {
-        if (!s) return ''
-        const d = parseIsoSafe(typeof s === 'string' ? s : s.Fecha ?? s.fecha ?? s)
-        return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '')
-      }).filter(Boolean))
-      setReprogramAvailableDates(set)
+        if (!s) return '';
+        const d = parseIsoSafe(typeof s === 'string' ? s : s.Fecha ?? s.fecha ?? s);
+        return d ? toYmdLocal(d) : (typeof s === 'string' ? s.slice(0,10) : '');
+      }).filter(Boolean));
+      setReprogramAvailableDates(set);
     } catch {
-      setReprogramAvailableDates(new Set())
+      setReprogramAvailableDates(new Set());
     } finally {
-      setReprogramLoadingAvailableDates(false)
+      setReprogramLoadingAvailableDates(false);
     }
   }
   async function fetchReprogramSlots(terapeutaId, dateVal, duracion) {
@@ -590,6 +638,15 @@ export default function Citas() {
   const reprogramModifiers = { available: (date) => (reprogramAvailableDates?.size || 0) > 0 && reprogramAvailableDates.has(toYmdLocal(date)) }
   const reprogramDisabled = (day) => (reprogramAvailableDates?.size || 0) > 0 && !reprogramAvailableDates.has(toYmdLocal(day))
 
+  // Ordenar items por fecha descendente (más reciente primero)
+  const sortedItems = Array.isArray(items)
+    ? [...items].sort((a, b) => {
+        const da = a.fecha ? new Date(a.fecha) : new Date(0);
+        const db = b.fecha ? new Date(b.fecha) : new Date(0);
+        return db - da;
+      })
+    : items;
+
   return (
     <>
       <style>{`
@@ -655,12 +712,56 @@ export default function Citas() {
                         <option key={p.Id ?? p.id} value={p.Id ?? p.id}>{(p.Nombres || p.nombres || p.nombre || '') + ' ' + (p.Apellidos || p.apellidos || '')}</option>
                       ))}
                     </select>
-                    <select className="input" value={createForm.TipoSesionId || ''} onChange={onTipoSesionChange}>
-                      <option value="">Seleccione tipo de sesión</option>
-                      {(tiposList||[]).map(ts=> (
-                        <option key={ts.Id ?? ts.id} value={ts.Id ?? ts.id}>{ts.Nombre ?? ts.nombre ?? ts.name}</option>
-                      ))}
-                    </select>
+                    {(() => {
+                      const tipos = Array.isArray(tiposList) ? tiposList : [];
+                      const tiposTienenId = tipos.length > 0 && (tipos[0].id !== undefined || tipos[0].Id !== undefined);
+                      return (
+                        <select
+                          className="input"
+                          value={tiposTienenId ? String(createForm.TipoSesionId) : (createForm.TipoSesionId === '' ? '' : Number(createForm.TipoSesionId))}
+                          onChange={async e => {
+                            let tipo, value;
+                            if (tiposTienenId) {
+                              value = e.target.value === '' ? '' : e.target.value;
+                              tipo = tipos.find(t => String(t.id ?? t.Id) === value);
+                            } else {
+                              value = e.target.value === '' ? '' : Number(e.target.value);
+                              tipo = tipos[value];
+                            }
+                            setCreateForm(s => ({ ...s, TipoSesionId: value, TerapeutaId: '', FechaDate: '', FechaTime: '' }));
+                            setAvailableDates(new Set());
+                            setAvailableSlots([]);
+                            setTerapeutasList([]);
+                            if (e.target.value === '' || !tipo) return;
+                            const especialidadId = tipo.especialidadId ?? tipo.EspecialidadId ?? (tipo.especialidad && tipo.especialidad.id);
+                            if (!especialidadId) {
+                              window.alert('No se pudo determinar la especialidad para este tipo de sesión. El backend debe enviar el campo especialidadId.');
+                              setTerapeutasList([]);
+                              return;
+                            }
+                            try {
+                              setLoadingTerapeutasCreate(true);
+                              const terapeutas = await apiFetch(`/api/terapeutas?especialidadId=${especialidadId}`);
+                              setTerapeutasList(Array.isArray(terapeutas) ? terapeutas : (terapeutas && terapeutas.value) ? terapeutas.value : []);
+                            } catch (err) {
+                              setTerapeutasList([]);
+                            } finally {
+                              setLoadingTerapeutasCreate(false);
+                            }
+                          }}
+                        >
+                          <option value="">Seleccione tipo de sesión</option>
+                          {tiposTienenId
+                            ? tipos.map(ts => (
+                                <option key={String(ts.id ?? ts.Id)} value={String(ts.id ?? ts.Id)}>{ts.nombre ?? ts.Nombre ?? ts.name}</option>
+                              ))
+                            : tipos.map((ts, idx) => (
+                                <option key={idx} value={idx}>{ts.nombre ?? ts.Nombre ?? ts.name}</option>
+                              ))
+                          }
+                        </select>
+                      );
+                    })()}
                     <select
                       className="input"
                       value={createForm.TerapeutaId || ''}
@@ -746,8 +847,8 @@ export default function Citas() {
                   </div>
 
                   <div>
-                    <label>Duración (min) — opcional</label>
-                    <input type="number" className="input" value={reprogramForm.DuracionMinutos ?? ''} onChange={e=>setReprogramForm(f=>({...f,DuracionMinutos: e.target.value ? Number(e.target.value) : null }))} />
+                    <label>Duración</label>
+                    <input type="number" className="input" value={45} readOnly disabled style={{ background: '#f5f5f5', color: '#888' }} />
                   </div>
 
                   {reprogramError && <div className="error">{reprogramError}</div>}
@@ -799,7 +900,7 @@ export default function Citas() {
           {/* Lista de citas */}
           {items === null && <div className="card"><div className="spinner" /></div>}
           {items && items.length === 0 && <div className="card">No hay citas</div>}
-          {items && items.length > 0 && items.map((c) => (
+          {sortedItems && sortedItems.length > 0 && sortedItems.map((c) => (
             <div className="card" key={c.id ?? JSON.stringify(c)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>

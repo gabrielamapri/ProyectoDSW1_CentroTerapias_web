@@ -17,10 +17,13 @@ export default function Auth({ onLogin }) {
         method: 'POST',
         body: { email, password }
       })
-      const t = data?.token || data?.accessToken || (typeof data === 'string' ? data : JSON.stringify(data))
-      saveToken(t)
-      setToken(t)
-      if (onLogin) onLogin(t)
+      // Guardar email, role y token en localStorage según formato del backend
+      if (data?.email) localStorage.setItem('userEmail', data.email)
+      if (data?.role) localStorage.setItem('userRole', data.role)
+      if (data?.token) localStorage.setItem('ct_token', data.token)
+      saveToken(data?.token)
+      setToken(data?.token)
+      if (onLogin) onLogin({ token: data?.token, role: data?.role, email: data?.email })
     } catch (err) {
       setError(err?.message || String(err))
     } finally {

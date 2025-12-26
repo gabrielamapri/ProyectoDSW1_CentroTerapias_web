@@ -22,15 +22,36 @@ export default function App() {
   const [selectedFamilyId, setSelectedFamilyId] = useState(null)
   const [selectedFamilyOpenCreate, setSelectedFamilyOpenCreate] = useState(false)
   const [selectedFamilyPatientId, setSelectedFamilyPatientId] = useState(null)
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '')
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || '')
 
   function handleLogin(t) {
-    setToken(t)
+    // t debe ser un objeto con token, role y email
+    if (typeof t === 'object' && t !== null) {
+      setToken(t.token)
+      localStorage.setItem('ct_token', t.token)
+      if (t.role) {
+        setUserRole(t.role)
+        localStorage.setItem('userRole', t.role)
+      }
+      if (t.email) {
+        setUserEmail(t.email)
+        localStorage.setItem('userEmail', t.email)
+      }
+    } else {
+      setToken(t)
+      localStorage.setItem('ct_token', t)
+    }
     setView('home')
   }
 
   function handleLogout() {
     localStorage.removeItem('ct_token')
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userEmail')
     setToken(null)
+    setUserRole('')
+    setUserEmail('')
   }
 
   // Helper para navegar a familias y resetear estados
@@ -80,6 +101,8 @@ export default function App() {
     }
   }, [])
 
+  const isPadre = userRole && userRole.toLowerCase() === 'padre';
+  const isFamiliaPadre = isPadre && userEmail && userEmail.trim().toLowerCase() === 'familia@centro.local';
   return (
     <div className="app-container">
       <header className="site-header">
@@ -104,7 +127,7 @@ export default function App() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M21 12.08c0-4.97-4.03-9-9-9S3 7.11 3 12.08c0 1.61.42 3.12 1.17 4.44L3 21l4.76-1.24A8.91 8.91 0 0012 21c4.97 0 9-4.03 9-8.92z" fill="#25D366" opacity="0.12"/>
               <path d="M20.5 3.5a11 11 0 10-3.05 15.83L21 21l1.67-4.02A11 11 0 0020.5 3.5z" stroke="#25D366" strokeWidth="0" fill="none"/>
-              <path d="M16.7 13.3c-.3-.15-1.75-.86-2.03-.97-.28-.11-.48-.16-.68.16-.2.32-.78.97-.96 1.17-.18.2-.36.22-.66.07-.3-.15-1.26-.47-2.4-1.47-.89-.8-1.48-1.8-1.66-2.1-.18-.3-.02-.46.13-.61.13-.12.3-.33.45-.5.15-.16.2-.27.3-.45.1-.18.05-.34-.03-.49-.08-.15-.68-1.63-.93-2.24-.24-.58-.48-.5-.66-.51-.17-.01-.37-.01-.57-.01-.2 0-.5.07-.76.34-.26.27-1 1-.99 2.47 0 1.47 1.03 2.9 1.17 3.1.14.2 2.02 3.2 4.9 4.48 2.88 1.28 2.88.85 3.4.8.52-.05 1.74-.71 1.99-1.4.25-.7.25-1.3.17-1.42-.08-.12-.28-.18-.58-.33z" fill="#075E54"/>
+              <path d="M16.7 13.3c-.3-.15-1.75-.86-2.03-.97-.28-.11-.48-.16-.68.16-.2.32-.78.97-.96 1.17-.18.2-.36.22-.66.07-.3-.15-1.26-.47-2.4-1.47-.89-.8-1.48-1.8-1.66-2.1-.18-.3-.02-.46.13-.61.13-.12.3-.33.45-.5.15-.16.2-.27.3-.45.1-.18.05-.34-.03-.49-.08-.15-.68-1.63-.93-2.24-.24-.58-.48.5-.66.51-.17.01-.37.01-.57.01-.2 0-.5.07-.76.34-.26.27-1 1-.99 2.47 0 1.47 1.03 2.9 1.17 3.1.14.2 2.02 3.2 4.9 4.48 2.88 1.28 2.88.85 3.4.8.52-.05 1.74-.71 1.99-1.4.25-.7.25-1.3.17-1.42-.08-.12-.28-.18-.58-.33z" fill="#075E54"/>
             </svg>
             <span className="whatsapp-text">WhatsApp</span>
           </a>
@@ -120,18 +143,26 @@ export default function App() {
               <button className={view==='pacientes'? 'active':''} onClick={() => setView('pacientes')}>Pacientes</button>
               <button className={view==='especialidades'? 'active':''} onClick={() => setView('especialidades')}>Especialidades</button>
               <button className={view==='terapeutas'? 'active':''} onClick={() => setView('terapeutas')}>Terapeutas</button>
-              <button className={view==='franjas'? 'active':''} onClick={() => setView('franjas')}>Franjas</button>
-              <button className={view==='franjaexcepciones'? 'active':''} onClick={() => setView('franjaexcepciones')}>Franja Excepciones</button>
+              {!isFamiliaPadre && (
+                <>
+                  <button className={view==='franjas'? 'active':''} onClick={() => setView('franjas')}>Franjas</button>
+                  <button className={view==='franjaexcepciones'? 'active':''} onClick={() => setView('franjaexcepciones')}>Franja Excepciones</button>
+                </>
+              )}
               <button className={view==='tiposesiones'? 'active':''} onClick={() => setView('tiposesiones')}>Tipo de Sesión</button>
               <button className={view==='citas'? 'active':''} onClick={() => setView('citas')}>Citas</button>
-              <button className={view==='citasterapeuta'? 'active':''} onClick={() => setView('citasterapeuta')}>Citas del Terapeuta</button>
+              {!isFamiliaPadre && (
+                <button className={view==='citasterapeuta'? 'active':''} onClick={() => setView('citasterapeuta')}>Citas del Terapeuta</button>
+              )}
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
-              <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
-              
-              
-              <button className={view==='report-citas-proximas'? 'active':''} onClick={() => setView('report-citas-proximas')}>Reporte: Citas Próximas</button>
-              
+              {/* Ocultar reportes para rol padre */}
+              {!isPadre && (
+                <>
+                  <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
+                  <button className={view==='report-citas-proximas'? 'active':''} onClick={() => setView('report-citas-proximas')}>Reporte: Citas Próximas</button>
+                </>
+              )}
               <button className="logout" onClick={() => { handleLogout(); setView('auth'); }}>Cerrar sesión</button>
             </nav>
           </aside>
@@ -147,6 +178,7 @@ export default function App() {
           </section>
 
           <div className="home-cards" style={{marginTop:12}}>
+            {/* Mostrar tarjeta de pacientes para todos los roles */}
             <div className="card home-card pastel" onClick={() => setView('pacientes')}>
               <div className="icon" aria-hidden>
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 20c0-2.21 3.58-4 6-4s6 1.79 6 4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -179,13 +211,15 @@ export default function App() {
               <small className="muted">Programar y ver citas</small>
             </div>
 
-            <div className="card home-card pastel" onClick={() => setView('franjas')}>
-              <div className="icon" aria-hidden>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 7v5l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#374151" strokeWidth="1.2"/></svg>
+            {!isFamiliaPadre && (
+              <div className="card home-card pastel" onClick={() => setView('franjas')}>
+                <div className="icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 7v5l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="#374151" strokeWidth="1.2"/></svg>
+                </div>
+                <h3 style={{margin:'0 0 6px 0'}}>Franjas</h3>
+                <small className="muted">Disponibilidad de terapeutas</small>
               </div>
-              <h3 style={{margin:'0 0 6px 0'}}>Franjas</h3>
-              <small className="muted">Disponibilidad de terapeutas</small>
-            </div>
+            )}
 
             <div className="card home-card pastel" onClick={() => setView('especialidades')}>
               <div className="icon" aria-hidden>
@@ -211,13 +245,15 @@ export default function App() {
               <small className="muted">Apuntes clínicos por cita</small>
             </div>
             {/* Tarjeta para Franja Excepciones */}
-            <div className="card home-card pastel" onClick={() => setView('franjaexcepciones')}>
-              <div className="icon" aria-hidden>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#374151" strokeWidth="1.2"/><path d="M8 12h8" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            {!isFamiliaPadre && (
+              <div className="card home-card pastel" onClick={() => setView('franjaexcepciones')}>
+                <div className="icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#374151" strokeWidth="1.2"/><path d="M8 12h8" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                </div>
+                <h3 style={{margin:'0 0 6px 0'}}>Franja Excepciones</h3>
+                <small className="muted">Excepciones de atención</small>
               </div>
-              <h3 style={{margin:'0 0 6px 0'}}>Franja Excepciones</h3>
-              <small className="muted">Excepciones de atención</small>
-            </div>
+            )}
             {/* Tarjeta para Reporte: Historial de Paciente */}
             <div className="card home-card pastel" onClick={() => setView('report-historial')}>
               <div className="icon" aria-hidden>
@@ -226,15 +262,29 @@ export default function App() {
               <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Paciente</h3>
               <small className="muted">Ver historial de un paciente</small>
             </div>
-            {/* Tarjeta para Reporte: Historial de Citas */}
-            <div className="card home-card pastel" onClick={() => setView('report-historial-citas')}>
-              <div className="icon" aria-hidden>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
-              </div>
-              <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Citas</h3>
-              <small className="muted">Ver historial de citas</small>
-            </div>
-              {/* Tarjeta para Citas del Terapeuta */}
+            {/* Tarjetas de reportes ocultas para rol padre */}
+            {!isPadre && (
+              <>
+                {/* Tarjeta para Reporte: Historial de Citas */}
+                <div className="card home-card pastel" onClick={() => setView('report-historial-citas')}>
+                  <div className="icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  </div>
+                  <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Citas</h3>
+                  <small className="muted">Ver historial de citas</small>
+                </div>
+                {/* Tarjeta para Reporte: Citas Próximas */}
+                <div className="card home-card pastel" onClick={() => setView('report-citas-proximas')}>
+                  <div className="icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M12 8v4l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  </div>
+                  <h3 style={{margin:'0 0 6px 0'}}>Reporte: Citas Próximas</h3>
+                  <small className="muted">Ver próximas citas</small>
+                </div>
+              </>
+            )}
+            {/* Tarjeta para Citas del Terapeuta */}
+            {!isFamiliaPadre && (
               <div className="card home-card pastel" onClick={() => setView('citasterapeuta')}>
                 <div className="icon" aria-hidden>
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M8 8h8M8 12h8M8 16h4" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
@@ -242,14 +292,7 @@ export default function App() {
                 <h3 style={{margin:'0 0 6px 0'}}>Citas del Terapeuta</h3>
                 <small className="muted">Ver agenda de terapeutas</small>
               </div>
-            {/* Tarjeta para Reporte: Citas Próximas */}
-            <div className="card home-card pastel" onClick={() => setView('report-citas-proximas')}>
-              <div className="icon" aria-hidden>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#374151" strokeWidth="1.2"/><path d="M12 8v4l3 3" stroke="#374151" strokeWidth="1.2" strokeLinecap="round"/></svg>
-              </div>
-              <h3 style={{margin:'0 0 6px 0'}}>Reporte: Citas Próximas</h3>
-              <small className="muted">Ver próximas citas</small>
-            </div>
+            )}
           </div>
         </>
       )}
@@ -265,11 +308,9 @@ export default function App() {
         {view === 'notas' && <NotasSesion />}
         {view === 'report-historial' && <ReportHistorialPaciente />}
         {view === 'report-historial-citas' && <ReportHistorialCitas />}
-        
-        
         {view === 'report-citas-proximas' && <ReportCitasProximas />}
         {view === 'citasterapeuta' && <CitasTerapeuta />}
-        {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} prefillPacienteId={selectedFamilyPatientId} />}
+        {view === 'familias' && <Familias selectedId={selectedFamilyId} openCreate={selectedFamilyOpenCreate} prefillPacienteId={selectedFamilyPatientId} userRole={userRole} />}
         {view === 'auth' && <Auth onLogin={handleLogin} />}
       </main>
 

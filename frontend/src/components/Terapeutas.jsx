@@ -3,8 +3,13 @@ import { apiFetch, apiFetchWithMeta } from '../utils/api'
 import Modal from './Modal'
 
 export default function Terapeutas() {
-  const [items, setItems] = useState(null)
-  const [error, setError] = useState(null)
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
+  const userRole = localStorage.getItem('userRole') || '';
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const isPadreFamilia = userRole.toLowerCase() === 'padre' && userEmail.trim().toLowerCase() === 'familia@centro.local';
+    // ...existing code...
+  // (eliminado: declaración duplicada de error)
   const [editing, setEditing] = useState(null)
   const [especialidades, setEspecialidades] = useState([])
   const [page, setPage] = useState(1)
@@ -49,6 +54,37 @@ export default function Terapeutas() {
       })
       .catch(() => setEspecialidades([]))
   }, [])
+
+  if (isPadreFamilia) {
+    if (!items) return <div className="card"><div className="spinner" /></div>;
+    return (
+      <section>
+        <h2>Terapeutas</h2>
+        <div style={{marginTop:12}} className="card">
+          <table className="table pastel">
+            <thead>
+              <tr>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Especialidad</th>
+                <th>Presentación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(items || []).map((t) => (
+                <tr key={t.id || t.Id || JSON.stringify(t)}>
+                  <td>{t.Nombres ?? t.nombres ?? t.nombre ?? '—'}</td>
+                  <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
+                  <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
+                  <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
 
   if (error) return <div className="error">Error: {error}</div>
   if (!items) return <div className="card"><div className="spinner" /></div>

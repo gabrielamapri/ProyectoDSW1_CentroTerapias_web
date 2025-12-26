@@ -13,15 +13,20 @@ export default function ReportHistorialPaciente(){
   const [pageSize] = useState(10)
    const [tiposMap, setTiposMap] = useState({})
 
+  // Detectar rol desde localStorage
+  const userRole = localStorage.getItem('userRole') || '';
+  const isPadre = userRole.toLowerCase() === 'padre';
+
   useEffect(()=>{
     async function load(){
       try{
-        const res = await apiFetch('/api/pacientes')
+        const endpoint = isPadre ? '/api/pacientes/mis-hijos' : '/api/pacientes';
+        const res = await apiFetch(endpoint)
         setPacientes(Array.isArray(res) ? res : (res?.data ?? res ?? []))
       }catch(e){ console.error('ReportHistorialPaciente: failed loading pacientes', e); setPacientes([]) }
     }
     load()
-  },[])
+  },[isPadre])
 
   // load terapeutas once to map ids -> names (backend may omit terapeutaNombre in citas)
   useEffect(()=>{
