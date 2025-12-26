@@ -182,13 +182,13 @@ export default function Familias({ selectedId = null, openCreate = false, prefil
   if (error) return <div className="error">Error: {error}</div>
   if (!items) return <div className="card"><div className="spinner" /></div>
 
-  const userEmail = localStorage.getItem('userEmail');
-  let filteredItems = items;
-  if ((userRole && userRole.toLowerCase() !== 'admin') && userEmail) {
-    filteredItems = items.filter(f =>
-      (f.ResponsablePrincipalEmail ?? f.responsablePrincipalEmail ?? f.responsable1Email ?? f.email ?? '').trim().toLowerCase() === userEmail.trim().toLowerCase()
-    );
-  }
+ const userEmail = localStorage.getItem('userEmail');
+let filteredItems = items;
+if (userRole && userRole.toLowerCase() === 'padre' && userEmail) {
+  filteredItems = items.filter(f =>
+    (f.ResponsablePrincipalEmail ?? f.responsablePrincipalEmail ?? f.responsable1Email ?? f.email ?? '').trim().toLowerCase() === userEmail.trim().toLowerCase()
+  );
+}
 
   return (
     <section>
@@ -282,13 +282,12 @@ export default function Familias({ selectedId = null, openCreate = false, prefil
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {/* Ocultar botón Editar para rol padre */}
-                  {userRole && userRole.toLowerCase() !== 'padre' && (
-                    <button className="btn small" onClick={() => setEditing(f)}>Editar</button>
-                  )}
-                  {/* Ocultar botón Añadir Paciente para rol padre */}
-                  {userRole && userRole.toLowerCase() !== 'padre' && (
-                    <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:paciente', { detail: { familiaId: f.id ?? f.Id } }))}>Añadir Paciente</button>
+                  {/* Ocultar botón Editar y Añadir Paciente para rol padre y terapeuta */}
+                  {userRole && userRole.toLowerCase() !== 'padre' && userRole.toLowerCase() !== 'terapeuta' && (
+                    <>
+                      <button className="btn small" onClick={() => setEditing(f)}>Editar</button>
+                      <button className="btn small" onClick={() => window.dispatchEvent(new CustomEvent('navigate:paciente', { detail: { familiaId: f.id ?? f.Id } }))}>Añadir Paciente</button>
+                    </>
                   )}
                   {userRole === 'Admin' && (
                     <button className="btn small" onClick={() => handleDelete(f)} style={{ background: '#dc3545', color: 'white', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(220,53,69,0.3)' }}>Eliminar</button>

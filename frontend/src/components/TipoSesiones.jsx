@@ -14,6 +14,7 @@ export default function TipoSesiones(){
   const userRole = localStorage.getItem('userRole') || '';
   const userEmail = localStorage.getItem('userEmail') || '';
   const isPadre = userRole.toLowerCase() === 'padre' && userEmail.trim().toLowerCase() === 'familia@centro.local';
+  const isTerapeuta = userRole.toLowerCase() === 'terapeuta';
 
   useEffect(()=>{
     const endpoints = ['/api/tiposesiones','/api/tiposSesiones','/api/tipos-sesiones','/api/tipoSesiones','/api/TipoSesiones']
@@ -89,7 +90,7 @@ export default function TipoSesiones(){
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Tipos de Sesión</h2>
-        {!(role === 'Padre' && email === 'familia@centro.local') && (
+        {!(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && (
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <input 
               placeholder="Buscar por nombre" 
@@ -110,7 +111,7 @@ export default function TipoSesiones(){
                 <th>Descripción</th>
                 <th>Duración (min)</th>
                 <th>Precio</th>
-                {!(role === 'Padre' && email === 'familia@centro.local') && <th>Acciones</th>}
+                {!(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && <th>Acciones</th>}
               </tr>
             </thead>
           <tbody>
@@ -120,7 +121,7 @@ export default function TipoSesiones(){
                   <td>{it.Descripcion ?? it.descripcion ?? ''}</td>
                   <td>{it.DuracionMinutos ?? it.duracionMinutos ?? it.duracion ?? '—'}</td>
                   <td>{(it.Precio ?? it.precio ?? null) != null ? (it.Precio ?? it.precio).toString() : '—'}</td>
-                {!(role === 'Padre' && email === 'familia@centro.local') && (
+                {!(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && (
                   <td className="actions">
                     <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
                     <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>
@@ -132,7 +133,7 @@ export default function TipoSesiones(){
         </table>
       </div>
 
-      {editing && !(role === 'Padre' && email === 'familia@centro.local') && (
+      {editing && !(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && (
         <Modal title={`Tipo ${(editing.Nombre??editing.nombre)||''}`} onClose={()=>setEditing(null)}>
           <form onSubmit={e=>{e.preventDefault(); const payload = {...editing}; if(payload.DuracionMinutos !== undefined) payload.DuracionMinutos = Number(payload.DuracionMinutos); if(payload.duracionMinutos !== undefined) payload.duracionMinutos = Number(payload.duracionMinutos); if(payload.Precio !== undefined) payload.Precio = Number(payload.Precio); if(payload.precio !== undefined) payload.precio = Number(payload.precio); handleSave(payload)}}>
             <div style={{display:'grid',gap:8}}>

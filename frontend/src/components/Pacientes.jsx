@@ -272,7 +272,7 @@ export default function Pacientes() {
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Pacientes</h2>
-        {(userRole.toLowerCase() !== 'padre') && (
+        {(userRole.toLowerCase() !== 'padre' && userRole.toLowerCase() !== 'terapeuta') && (
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <input placeholder="Buscar por nombre, apellido o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
             <button className="btn" onClick={() => setEditing({ __showFamilySelect: false })}>Nuevo Paciente</button>
@@ -291,7 +291,7 @@ export default function Pacientes() {
               <th>Familia</th>
               <th>Emergencia (nombre)</th>
               <th>Emergencia (tel)</th>
-              <th>Acciones</th>
+              {userRole.toLowerCase() !== 'terapeuta' && <th>Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -311,12 +311,14 @@ export default function Pacientes() {
                 </td>
                 <td>{p.NombreContactoEmergencia || p.nombreContactoEmergencia || '—'}</td>
                 <td>{p.NumeroContactoEmergencia || p.numeroContactoEmergencia || '—'}</td>
-                <td className="actions">
-                  <button className="btn small" onClick={() => handleEdit(p)}>Editar</button>
-                  {(userRole.toLowerCase() !== 'padre') && (
-                    <button className="btn small ghost" onClick={() => handleDelete(p)}>Eliminar</button>
-                  )}
-                </td>
+                {userRole.toLowerCase() !== 'terapeuta' && (
+                  <td className="actions">
+                    <button className="btn small" onClick={() => handleEdit(p)}>Editar</button>
+                    {(userRole.toLowerCase() !== 'padre') && (
+                      <button className="btn small ghost" onClick={() => handleDelete(p)}>Eliminar</button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

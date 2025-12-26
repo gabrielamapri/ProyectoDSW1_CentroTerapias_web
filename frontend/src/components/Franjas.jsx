@@ -8,6 +8,7 @@ export default function Franjas(){
   const [error,setError] = useState(null)
   const [therapists,setTherapists] = useState([])
   const [search, setSearch] = useState('')
+  const [deleteWarning, setDeleteWarning] = useState(null)
 
   const dayNames = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 
@@ -31,34 +32,46 @@ export default function Franjas(){
     if(!id) return alert('ID no disponible')
     if(!window.confirm('Eliminar franja?')) return
     try{
-      await apiFetch(`/api/franjas/${id}`,{method:'DELETE'})
-      await refresh()
+      const res = await apiFetch(`/api/franjas/${id}`,{method:'DELETE'}, true)
+      if(res && res.warning && Array.isArray(res.affectedAppointments) && res.affectedAppointments.length > 0){
+        setDeleteWarning({
+          warning: res.warning,
+          citas: res.affectedAppointments
+        })
+      } else {
+        await refresh()
+      }
     }catch(e){ alert('Error: '+(e.message||e)) }
   }
 
-    async function createException(franja){
-      const id = franja.id ?? franja.Id
-      if(!id) return alert('ID de franja no disponible')
-      const date = prompt('Fecha de la excepción (YYYY-MM-DD)')
-      if(!date) return
-      try{
-        await apiFetch(`/api/franjas/${id}/excepciones`, { method: 'POST', body: { Fecha: date } })
-        await refresh()
-        alert('Excepción creada')
-      }catch(e){ alert('Error: '+(e.message||e)) }
-    }
+  function closeWarning(){
+    setDeleteWarning(null)
+    refresh()
+  }
 
-    async function deleteException(franja){
-      const id = franja.id ?? franja.Id
-      if(!id) return alert('ID de franja no disponible')
-      const date = prompt('Fecha de la excepción a eliminar (YYYY-MM-DD)')
-      if(!date) return
-      try{
-        await apiFetch(`/api/franjas/${id}/excepciones?date=${encodeURIComponent(date)}`, { method: 'DELETE' })
-        await refresh()
-        alert('Excepción eliminada')
-      }catch(e){ alert('Error: '+(e.message||e)) }
-    }
+  async function createException(franja){
+    const id = franja.id ?? franja.Id
+    if(!id) return alert('ID de franja no disponible')
+    const date = prompt('Fecha de la excepción (YYYY-MM-DD)')
+    if(!date) return
+    try{
+      await apiFetch(`/api/franjas/${id}/excepciones`, { method: 'POST', body: { Fecha: date } })
+      await refresh()
+      alert('Excepción creada')
+    }catch(e){ alert('Error: '+(e.message||e)) }
+  }
+
+  async function deleteException(franja){
+    const id = franja.id ?? franja.Id
+    if(!id) return alert('ID de franja no disponible')
+    const date = prompt('Fecha de la excepción a eliminar (YYYY-MM-DD)')
+    if(!date) return
+    try{
+      await apiFetch(`/api/franjas/${id}/excepciones?date=${encodeURIComponent(date)}`, { method: 'DELETE' })
+      await refresh()
+      alert('Excepción eliminada')
+    }catch(e){ alert('Error: '+(e.message||e)) }
+  }
 
   function ensureSeconds(t){
     if(!t) return ''
@@ -96,10 +109,7 @@ export default function Franjas(){
       : (it.DiaSemana !== null && it.DiaSemana !== undefined ? [Number(it.DiaSemana)] : [])
     const isRecurrent = (diasArr && diasArr.length>0) || !!(it.Recurrente ?? it.recurrente)
     const fechaVal = (!isRecurrent && (it.Fecha || it.fecha)) ? dateForInput(it.Fecha ?? it.fecha) : null
-
-    // avoid mixing '??' and '||' without parentheses
     const therapistNameComputed = (it.terapeutaNombre || it.TerapeutaNombre || (it.terapeuta ? ((it.terapeuta.nombres||it.terapeuta.Nombres||'')+' '+(it.terapeuta.apellidos||it.terapeuta.Apellidos||'')).trim() : '')) || ''
-
     setEditing({
       ...it,
       TerapeutaId: it.TerapeutaId ?? it.terapeutaId ?? (it.terapeuta?.id ?? it.terapeuta?.Id) ?? null,
@@ -118,7 +128,6 @@ export default function Franjas(){
       if(!TerapeutaId || isNaN(TerapeutaId) || TerapeutaId <= 0){
         return alert('Selecciona un terapeuta válido desde la lista.')
       }
-
       let fechaRaw = obj.Fecha ?? obj.fecha ?? null
       if(typeof fechaRaw === 'string'){
         if(fechaRaw.trim() === '') fechaRaw = null
@@ -131,21 +140,17 @@ export default function Franjas(){
         if(isNaN(fechaRaw.getTime())) fechaRaw = null
         else fechaRaw = fechaRaw.toISOString()
       }
-
       const dias = (obj.DiasSemanaArray && Array.isArray(obj.DiasSemanaArray)) ? obj.DiasSemanaArray.map(n=>Number(n)).filter(n=>!isNaN(n)) : (obj.DiaSemana !== undefined && obj.DiaSemana !== null ? [Number(obj.DiaSemana)] : [])
-
       const recurrent = !!(obj.Recurrente ?? obj.recurrente)
       if(recurrent){
         if(!dias || dias.length === 0) return alert('Para franjas recurrentes debes seleccionar al menos un día.')
       } else {
         if(!fechaRaw) return alert('Para franjas no recurrentes debes indicar una fecha específica.')
       }
-
       const HoraInicio = ensureSeconds(obj.HoraInicio ?? obj.horaInicio ?? '')
       const HoraFin = ensureSeconds(obj.HoraFin ?? obj.horaFin ?? '')
       if(!HoraInicio) return alert('Introduce Hora Inicio')
       if(!HoraFin) return alert('Introduce Hora Fin')
-
       const basePayload = {
         TerapeutaId,
         Fecha: fechaRaw,
@@ -153,7 +158,6 @@ export default function Franjas(){
         HoraFin,
         Recurrente: recurrent
       }
-
       const id = obj.Id ?? obj.id
       if(id){
         const diaSingle = (dias && dias.length>0) ? dias[0] : null
@@ -170,7 +174,6 @@ export default function Franjas(){
           await apiFetch('/api/franjas', { method: 'POST', body: payload })
         }
       }
-
       await refresh()
       setEditing(null)
     }catch(e){ alert('Error: '+(e.message||String(e))) }
@@ -250,7 +253,6 @@ export default function Franjas(){
                   <td style={styles.td}>{formatTime(it.HoraFin ?? it.horaFin)}</td>
                   <td style={styles.td}>{(it.Recurrente ?? it.recurrente) ? <span style={styles.badge}>Sí</span> : <span style={{...styles.badge, background:'#eee', color:'#333'}}>No</span>}</td>
                   <td style={styles.td}>
-                    <button style={{...styles.btn, ...styles.btnSmall}} onClick={()=>openEdit(it)}>Editar</button>
                     <button style={{...styles.btn, ...styles.btnGhost}} onClick={()=>handleDelete(it)}>Eliminar</button>
                   </td>
                 </tr>
@@ -368,6 +370,28 @@ export default function Franjas(){
           </form>
         </Modal>
       )}
+      {deleteWarning && (
+        <Modal title="Advertencia: Citas futuras afectadas" onClose={closeWarning}>
+          <div style={{marginBottom:12, color:'#b36a00', fontWeight:600}}>
+            {deleteWarning.warning}
+          </div>
+          <div>
+            <strong>Citas afectadas:</strong>
+            <ul>
+              {deleteWarning.citas.map((cita, idx) => (
+                <li key={cita.id || idx}>
+                  {new Date(cita.fecha).toLocaleString()} — {cita.pacienteNombre}
+                  {cita.responsableNombre ? ` (${cita.responsableNombre})` : ''}
+                  {cita.responsableTelefono ? ` · ${cita.responsableTelefono}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div style={{display:'flex', justifyContent:'flex-end', marginTop:16}}>
+            <button className="btn" onClick={closeWarning} style={{...styles.btn, ...styles.btnPrimary}}>Cerrar</button>
+          </div>
+        </Modal>
+      )}
     </section>
   )
 }
@@ -396,3 +420,4 @@ const styles = {
   spinner: { width:36, height:36, borderRadius:'50%', border:'4px solid #f0f0f0', borderTop:'4px solid #6C5CE7', animation:'spin 1s linear infinite' },
   error: { padding:12, background:'#ffe6e6', color:'#8a1f1f', borderRadius:8 }
 }
+

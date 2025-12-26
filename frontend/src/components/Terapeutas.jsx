@@ -55,7 +55,7 @@ export default function Terapeutas() {
       .catch(() => setEspecialidades([]))
   }, [])
 
-  if (isPadreFamilia) {
+  if (isPadreFamilia || userRole.toLowerCase() === 'terapeuta') {
     if (!items) return <div className="card"><div className="spinner" /></div>;
     return (
       <section>
@@ -66,8 +66,11 @@ export default function Terapeutas() {
               <tr>
                 <th>Nombres</th>
                 <th>Apellidos</th>
+                <th>DNI</th>
+                <th>Correo</th>
                 <th>Especialidad</th>
                 <th>Presentación</th>
+                <th>Teléfono</th>
               </tr>
             </thead>
             <tbody>
@@ -75,8 +78,11 @@ export default function Terapeutas() {
                 <tr key={t.id || t.Id || JSON.stringify(t)}>
                   <td>{t.Nombres ?? t.nombres ?? t.nombre ?? '—'}</td>
                   <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
+                  <td>{t.DNI ?? t.Dni ?? t.dni ?? '—'}</td>
+                  <td>{t.Correo ?? t.correo ?? t.email ?? t.Email ?? '—'}</td>
                   <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
                   <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? '—'}</td>
+                  <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -160,7 +166,9 @@ export default function Terapeutas() {
             value={search}
             onChange={e=>{ setSearch(e.target.value); setPage(1) }}
           />
-          <button className="btn" onClick={() => setEditing({})}>Nuevo Terapeuta</button>
+          {userRole.toLowerCase() !== 'terapeuta' && (
+            <button className="btn" onClick={() => setEditing({})}>Nuevo Terapeuta</button>
+          )}
         </div>
       </div>
       <div style={{marginTop:12}} className="card">
@@ -174,8 +182,8 @@ export default function Terapeutas() {
               <th>Especialidad</th>
               <th>Presentación</th>
               <th>Teléfono</th>
-              <th>Dirección</th>
-              <th>Acciones</th>
+              {userRole.toLowerCase() !== 'terapeuta' && <th>Dirección</th>}
+              {userRole.toLowerCase() !== 'terapeuta' && <th>Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -188,11 +196,15 @@ export default function Terapeutas() {
                 <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
                 <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? '—'}</td>
                 <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
-                <td>{t.Direccion ?? t.direccion ?? t.address ?? '—'}</td>
-                <td className="actions">
-                  <button className="btn small" onClick={() => handleEdit(t)}>Editar</button>
-                  <button className="btn small ghost" onClick={() => handleDelete(t)}>Eliminar</button>
-                </td>
+                {userRole.toLowerCase() !== 'terapeuta' && (
+                  <td>{t.Direccion ?? t.direccion ?? t.address ?? '—'}</td>
+                )}
+                {userRole.toLowerCase() !== 'terapeuta' && (
+                  <td className="actions">
+                    <button className="btn small" onClick={() => handleEdit(t)}>Editar</button>
+                    <button className="btn small ghost" onClick={() => handleDelete(t)}>Eliminar</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

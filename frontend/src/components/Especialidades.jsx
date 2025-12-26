@@ -42,7 +42,7 @@ export default function Especialidades(){
   if(error) return <div className="error">Error: {error}</div>
   if(!items) return <div className="card"><div className="spinner"/></div>
 
-  if (userRole.toLowerCase() === 'padre') {
+  if (userRole.toLowerCase() === 'padre' || userRole.toLowerCase() === 'terapeuta') {
     return (
       <section>
         <h2>Especialidades</h2>
@@ -75,21 +75,31 @@ export default function Especialidades(){
             value={search} 
             onChange={e=>setSearch(e.target.value)} 
           />
-          <button className="btn" onClick={()=>setEditing({})}>Nueva Especialidad</button>
+          {userRole.toLowerCase() !== 'terapeuta' && (
+            <button className="btn" onClick={()=>setEditing({})}>Nueva Especialidad</button>
+          )}
         </div>
       </div>
       <div style={{marginTop:12}} className="card">
         <table className="table pastel">
-          <thead><tr><th>Nombre</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              {userRole.toLowerCase() !== 'terapeuta' && <th>Acciones</th>}
+            </tr>
+          </thead>
           <tbody>
             {items.map(it=> (
               <tr key={it.id ?? it.Id}>
                 <td>{it.Nombre ?? it.nombre ?? '—'}</td>
                 <td style={{maxWidth:360}}>{it.Descripcion ?? it.descripcion ?? '—'}</td>
-                <td className="actions">
-                  <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
-                  <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>
-                </td>
+                {userRole.toLowerCase() !== 'terapeuta' && (
+                  <td className="actions">
+                    <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
+                    <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
