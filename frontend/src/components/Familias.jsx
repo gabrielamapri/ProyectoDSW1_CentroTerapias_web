@@ -114,20 +114,16 @@ export default function Familias({ selectedId = null, openCreate = false, prefil
   }
 
   async function handleDelete(it) {
-    const id = it.id ?? it.Id
-    if (!id) return alert('ID no disponible')
-    if (!confirm('Eliminar familia?')) return
-    try {
-      const resp = await fetch(`/api/familias/${id}`, { method: 'DELETE' })
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}))
-        throw new Error(body.message || 'No se pudo eliminar')
-      }
-      await refresh()
-    } catch (e) {
-      alert('Error: ' + (e.message || e))
-    }
+  const id = it.id ?? it.Id
+  if (!id) return alert('ID no disponible')
+  if (!confirm('Eliminar familia?')) return
+  try {
+    await apiFetch(`/api/familias/${id}`, { method: 'DELETE' })
+    await refresh()
+  } catch (e) {
+    alert('Error: ' + (e.message || e))
   }
+}
 
   async function handleSave(obj) {
     try {

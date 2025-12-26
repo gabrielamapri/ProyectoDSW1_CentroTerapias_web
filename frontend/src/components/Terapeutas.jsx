@@ -113,25 +113,35 @@ export default function Terapeutas() {
     setTotal(Number(cnt))
   }
 
-  async function handleDelete(t) {
-    const id = t.id ?? t.Id
-    if (!id) return alert('ID de terapeuta no disponible')
-    if (!confirm('¿Eliminar terapeuta? Esta acción no se puede deshacer.')) return
-    try {
-      const resp = await fetch(`/api/terapeutas/${id}`, { method: 'DELETE' })
-      if (!resp.ok) {
-        let msg = 'No se pudo eliminar'
-        try {
-          const body = await resp.json()
-          msg = body?.message || msg
-        } catch {}
-        throw new Error(msg)
-      }
+async function handleDelete(t) {
+  const id = t.id ?? t.Id
+  if (!id) return alert('ID de terapeuta no disponible')
+  if (!confirm('¿Eliminar terapeuta? Esta acción no se puede deshacer.')) return
+  try {
+    const resp = await apiFetchWithMeta(`/api/terapeutas/${id}`, { method: 'DELETE' })
+    // Si la respuesta es undefined pero el terapeuta ya no está, forzar refresco y salir
+    if (!resp || !resp.response) {
       await refreshList()
-    } catch (err) {
-      alert('Error al eliminar: ' + (err?.message || err))
+      return;
     }
+    if (!resp.response.ok) {
+      let msg = 'No se pudo eliminar'
+      try {
+        const body = await resp.response?.json()
+        msg = body?.message || msg
+      } catch {}
+      throw new Error(msg)
+    }
+    await refreshList()
+  } catch (err) {
+    // Si el error es porque ya no existe, refrescar lista y no mostrar alerta
+    if (err?.message?.toLowerCase().includes('not found') || err?.message?.toLowerCase().includes('no existe')) {
+      await refreshList()
+      return;
+    }
+    alert('Error al eliminar: ' + (err?.message || err))
   }
+}
 
   function handleEdit(t) {
     setEditing({ ...t })
@@ -177,11 +187,11 @@ export default function Terapeutas() {
             <tr>
               <th>Nombres</th>
               <th>Apellidos</th>
-              <th>DNI</th>
-              <th>Correo</th>
+              {userRole.toLowerCase() !== 'padre' && <th>DNI</th>}
+              {userRole.toLowerCase() !== 'padre' && <th>Correo</th>}
               <th>Especialidad</th>
               <th>Presentación</th>
-              <th>Teléfono</th>
+              {userRole.toLowerCase() !== 'padre' && <th>Teléfono</th>}
               {userRole.toLowerCase() !== 'terapeuta' && <th>Dirección</th>}
               {userRole.toLowerCase() !== 'terapeuta' && <th>Acciones</th>}
             </tr>
@@ -191,11 +201,11 @@ export default function Terapeutas() {
               <tr key={t.id || t.Id || JSON.stringify(t)}>
                 <td>{t.Nombres ?? t.nombres ?? t.nombre ?? '—'}</td>
                 <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
-                <td>{t.DNI ?? t.Dni ?? t.dni ?? '—'}</td>
-                <td>{t.Correo ?? t.correo ?? t.email ?? t.Email ?? '—'}</td>
+                {userRole.toLowerCase() !== 'padre' && <td>{t.DNI ?? t.Dni ?? t.dni ?? '—'}</td>}
+                {userRole.toLowerCase() !== 'padre' && <td>{t.Correo ?? t.correo ?? t.email ?? t.Email ?? '—'}</td>}
                 <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
                 <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? '—'}</td>
-                <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
+                {userRole.toLowerCase() !== 'padre' && <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>}
                 {userRole.toLowerCase() !== 'terapeuta' && (
                   <td>{t.Direccion ?? t.direccion ?? t.address ?? '—'}</td>
                 )}

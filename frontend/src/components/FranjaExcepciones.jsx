@@ -140,7 +140,7 @@ export default function FranjaExcepciones() {
   // Llama al endpoint de citas y, si hay, pide confirmación
   const checkCitasBeforeSave = async (terapeutaId, inicio, fin) => {
     try {
-      const url = `/api/citas/terapeuta/${terapeutaId}/rango-fechas?inicio=${inicio}&fin=${fin}`
+      const url = `/api/citas/terapeuta/${terapeutaId}/rango-fechas?startDate=${inicio}&endDate=${fin}`
       const citas = await apiFetch(url)
       if (!Array.isArray(citas) || citas.length === 0) return true
       const lines = citas.map((c) => {

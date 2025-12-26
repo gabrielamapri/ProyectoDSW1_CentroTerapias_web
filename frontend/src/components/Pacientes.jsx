@@ -157,26 +157,22 @@ export default function Pacientes() {
   }, [page, pageSize, search, userRole])
 
   async function handleDelete(p) {
-    const id = p.Id ?? p.id
-    if (!id) return alert('ID de paciente no disponible')
-    if (!confirm('¿Eliminar paciente? Esta acción no se puede deshacer.')) return
-    try {
-      const resp = await fetch(`/api/pacientes/${id}`, { method: 'DELETE' })
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}))
-        throw new Error(body.message || 'No se pudo eliminar')
-      }
-      // refrescar respetando paginación/búsqueda actuales
-      const q = []
-      q.push(`page=${page}`)
-      q.push(`pageSize=${pageSize}`)
-      if (search) q.push(`search=${encodeURIComponent(search)}`)
-      const res = await apiFetchWithMeta(`/api/pacientes?${q.join('&')}`)
-      setItems(res.data)
-    } catch (err) {
-      alert('Error al eliminar: ' + (err?.message || err))
-    }
+  const id = p.Id ?? p.id
+  if (!id) return alert('ID de paciente no disponible')
+  if (!confirm('¿Eliminar paciente? Esta acción no se puede deshacer.')) return
+  try {
+    await apiFetch(`/api/pacientes/${id}`, { method: 'DELETE' })
+    // refrescar respetando paginación/búsqueda actuales
+    const q = []
+    q.push(`page=${page}`)
+    q.push(`pageSize=${pageSize}`)
+    if (search) q.push(`search=${encodeURIComponent(search)}`)
+    const res = await apiFetchWithMeta(`/api/pacientes?${q.join('&')}`)
+    setItems(res.data)
+  } catch (err) {
+    alert('Error al eliminar: ' + (err?.message || err))
   }
+}
 
   function handleEdit(p) {
     setEditing({ ...p, Sexo: normalizeSexoCode(p.Sexo ?? p.sexo) })

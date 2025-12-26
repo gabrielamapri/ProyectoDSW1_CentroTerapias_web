@@ -1,14 +1,13 @@
-
 import React, { useEffect, useState } from 'react'
 import { apiFetch } from '../utils/api'
 import Modal from './Modal'
-
 
 export default function TipoSesiones(){
   const [items,setItems] = useState(null)
   const [editing,setEditing] = useState(null)
   const [error,setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [especialidades, setEspecialidades] = useState([])
 
   // Detect role/email (usar claves correctas de localStorage)
   const userRole = localStorage.getItem('userRole') || '';
@@ -33,6 +32,12 @@ export default function TipoSesiones(){
     return ()=> mounted = false
   },[search])
 
+  useEffect(() => {
+    apiFetch('/api/especialidades')
+      .then(setEspecialidades)
+      .catch(() => setEspecialidades([]))
+  }, [])
+
   async function refresh(){ 
     const url = search ? `/api/tiposesiones?search=${encodeURIComponent(search)}` : '/api/tiposesiones'
     const res = await apiFetch(url)
@@ -48,7 +53,23 @@ export default function TipoSesiones(){
   }
 
   async function handleSave(obj){
-    try{ const payload = {...obj}; const id = payload.Id ?? payload.id; if(id) await apiFetch(`/api/tiposesiones/${id}`,{method:'PUT', body: payload}); else await apiFetch('/api/tiposesiones',{method:'POST', body: payload}); await refresh(); setEditing(null)}catch(e){alert('Error: '+(e.message||e))}
+    try{ 
+      const payload = {...obj}; 
+      const id = payload.Id ?? payload.id; 
+      if(payload.DuracionMinutos !== undefined) payload.DuracionMinutos = Number(payload.DuracionMinutos);
+      if(payload.duracionMinutos !== undefined) payload.duracionMinutos = Number(payload.duracionMinutos);
+      if(payload.Precio !== undefined) payload.Precio = Number(payload.Precio);
+      if(payload.precio !== undefined) payload.precio = Number(payload.precio);
+      if(payload.EspecialidadId !== undefined) payload.EspecialidadId = Number(payload.EspecialidadId);
+      if(id) 
+        await apiFetch(`/api/tiposesiones/${id}`,{method:'PUT', body: payload}); 
+      else 
+        await apiFetch('/api/tiposesiones',{method:'POST', body: payload}); 
+      await refresh(); 
+      setEditing(null)
+    }catch(e){
+      alert('Error: '+(e.message||e))
+    }
   }
 
   if(error) return <div className="error">Error: {error}</div>
@@ -135,15 +156,37 @@ export default function TipoSesiones(){
 
       {editing && !(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && (
         <Modal title={`Tipo ${(editing.Nombre??editing.nombre)||''}`} onClose={()=>setEditing(null)}>
-          <form onSubmit={e=>{e.preventDefault(); const payload = {...editing}; if(payload.DuracionMinutos !== undefined) payload.DuracionMinutos = Number(payload.DuracionMinutos); if(payload.duracionMinutos !== undefined) payload.duracionMinutos = Number(payload.duracionMinutos); if(payload.Precio !== undefined) payload.Precio = Number(payload.Precio); if(payload.precio !== undefined) payload.precio = Number(payload.precio); handleSave(payload)}}>
+          <form onSubmit={e=>{
+            e.preventDefault(); 
+            const payload = {...editing}; 
+            if(payload.DuracionMinutos !== undefined) payload.DuracionMinutos = Number(payload.DuracionMinutos);
+            if(payload.duracionMinutos !== undefined) payload.duracionMinutos = Number(payload.duracionMinutos);
+            if(payload.Precio !== undefined) payload.Precio = Number(payload.Precio);
+            if(payload.precio !== undefined) payload.precio = Number(payload.precio);
+            if(payload.EspecialidadId !== undefined) payload.EspecialidadId = Number(payload.EspecialidadId);
+            handleSave(payload)
+          }}>
             <div style={{display:'grid',gap:8}}>
               <input className="input" placeholder="Nombre" value={editing.Nombre ?? editing.nombre ?? ''} onChange={e=>setEditing(s=>({...s,Nombre:e.target.value}))} />
               <textarea className="input" placeholder="Descripción" value={editing.Descripcion ?? editing.descripcion ?? ''} onChange={e=>setEditing(s=>({...s,Descripcion:e.target.value}))} />
-                <input className="input" type="number" min="0" placeholder="Duración (min)" value={editing.DuracionMinutos ?? editing.duracionMinutos ?? ''} 
-                  onChange={e=>setEditing(s=>({...s,DuracionMinutos:e.target.value}))}
-                  readOnly={editing && editing.DuracionMinutos === 45 && !editing.id && !editing.Id}
-                />
-                <input className="input" type="number" step="0.01" min="0" placeholder="Precio" value={editing.Precio ?? editing.precio ?? ''} onChange={e=>setEditing(s=>({...s,Precio:e.target.value}))} />
+              <input className="input" type="number" min="0" placeholder="Duración (min)" value={editing.DuracionMinutos ?? editing.duracionMinutos ?? ''} 
+                onChange={e=>setEditing(s=>({...s,DuracionMinutos:e.target.value}))}
+                readOnly={editing && editing.DuracionMinutos === 45 && !editing.id && !editing.Id}
+              />
+              <input className="input" type="number" step="0.01" min="0" placeholder="Precio" value={editing.Precio ?? editing.precio ?? ''} onChange={e=>setEditing(s=>({...s,Precio:e.target.value}))} />
+              <select
+                className="input"
+                value={editing.EspecialidadId ?? editing.especialidadId ?? ''}
+                onChange={e => setEditing(s => ({ ...s, EspecialidadId: Number(e.target.value) }))}
+                required
+              >
+                <option value="">Seleccione especialidad...</option>
+                {especialidades.map(e => (
+                  <option key={e.id ?? e.Id} value={e.id ?? e.Id}>
+                    {e.Nombre ?? e.nombre ?? 'Especialidad'}
+                  </option>
+                ))}
+              </select>
               <div style={{display:'flex',justifyContent:'flex-end',gap:8}}>
                 <button className="btn" type="submit">Guardar</button>
                 <button type="button" className="btn ghost" onClick={()=>setEditing(null)}>Cancelar</button>

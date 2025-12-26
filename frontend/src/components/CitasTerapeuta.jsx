@@ -30,18 +30,19 @@ function CitasTerapeuta() {
   const [citas, setCitas] = useState([]);
   const [nota, setNota] = useState('');
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
+  const [guardando, setGuardando] = useState(false);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userRole = (user?.role || localStorage.getItem('userRole') || '').toLowerCase();
   const isTerapeuta = userRole === 'terapeuta';
   const authenticatedTerapeutaId = user?.terapeutaId || (() => {
-  try {
-    const token = localStorage.getItem('ct_token') || localStorage.getItem('token');
-    if (!token) return null;
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || null;
-  } catch { return null; }
-})();
+    try {
+      const token = localStorage.getItem('ct_token') || localStorage.getItem('token');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || null;
+    } catch { return null; }
+  })();
 
   useEffect(() => {
     apiFetch('/api/terapeutas')
@@ -71,35 +72,35 @@ function CitasTerapeuta() {
   };
 
   const handleGuardarNota = async () => {
-    await apiFetch('/api/notassesion', {
-      method: 'POST',
-      body: {
-        citaId: citaSeleccionada.id,
-        terapeutaId: terapeutaId,
-        notas: nota
-      }
-    });
-    await apiFetch(`/api/citas/${citaSeleccionada.id}`, {
-      method: 'PUT',
-      body: {
-        estado: 'Completada',
-        notas: nota
-      }
-    });
-    setNota('');
-    setCitaSeleccionada(null);
-    apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
-      .then(data => setCitas(data))
-      .catch(() => setCitas([]));
+    setGuardando(true);
+    try {
+      await apiFetch('/api/notassesion', {
+        method: 'POST',
+        body: {
+          citaId: citaSeleccionada.id,
+          terapeutaId: terapeutaId,
+          notas: nota
+        }
+      });
+      await apiFetch(`/api/citas/${citaSeleccionada.id}`, {
+        method: 'PUT',
+        body: {
+          estado: 'Completada',
+          notas: nota
+        }
+      });
+      setNota('');
+      const data = await apiFetch(`/api/citas/terapeuta/${terapeutaId}`);
+      setCitas(data);
+      setCitaSeleccionada(null);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const handleNoAsistio = async (cita) => {
-    await apiFetch(`/api/citas/${cita.id}`, {
-      method: 'PUT',
-      body: {
-        estado: 'NoAsistio',
-        notas: cita.notas || ''
-      }
+    await apiFetch(`/api/citas/${cita.id}/noasistio`, {
+      method: 'PATCH'
     });
     apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
       .then(data => setCitas(data))
@@ -111,9 +112,7 @@ function CitasTerapeuta() {
 
   const isProgramada = (estado) =>
     estado === 'Programada' || estado === 'Scheduled';
-console.log('authenticatedTerapeutaId:', authenticatedTerapeutaId);
-console.log('terapeutas ids:', terapeutas.map(t => t.id));
-console.log('terapeutas:', terapeutas);
+
   const terapeutaAutenticado = terapeutas.find(
     t => String(t.id) === String(authenticatedTerapeutaId)
   );
@@ -197,7 +196,13 @@ console.log('terapeutas:', terapeutas);
             <h3 style={styles.modalTitle}>Nota de sesión para {citaSeleccionada.pacienteNombre}</h3>
             <textarea value={nota} onChange={e => setNota(e.target.value)} style={styles.textarea} placeholder="Escribe la nota de la sesión..." />
             <div style={styles.btnRow}>
-              <button style={{ ...styles.btn, ...styles.btnPrimary }} onClick={handleGuardarNota}>Guardar y completar</button>
+              <button
+                style={{ ...styles.btn, ...styles.btnPrimary }}
+                onClick={handleGuardarNota}
+                disabled={guardando}
+              >
+                {guardando ? 'Guardando...' : 'Guardar y completar'}
+              </button>
               <button style={{ ...styles.btn, ...styles.btnGhost }} onClick={() => setCitaSeleccionada(null)}>Cancelar</button>
             </div>
           </div>
