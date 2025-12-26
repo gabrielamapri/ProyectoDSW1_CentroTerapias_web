@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { apiFetch } from '../utils/api';
 
 // Estilos pastel y modernos
 const styles = {
@@ -33,17 +34,17 @@ function CitasTerapeuta() {
 
   // 1. Cargar terapeutas al montar
   useEffect(() => {
-    fetch('/api/terapeutas')
-      .then(res => res.json())
-      .then(data => setTerapeutas(data));
+    apiFetch('/api/terapeutas')
+      .then(data => setTerapeutas(data))
+      .catch(() => setTerapeutas([]));
   }, []);
 
   // 2. Cargar citas cuando cambia el terapeuta seleccionado
   useEffect(() => {
     if (terapeutaId) {
-      fetch(`/api/citas/terapeuta/${terapeutaId}`)
-        .then(res => res.json())
-        .then(data => setCitas(data));
+      apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
+        .then(data => setCitas(data))
+        .catch(() => setCitas([]));
     } else {
       setCitas([]);
     }
@@ -58,45 +59,42 @@ function CitasTerapeuta() {
   // 4. Guardar nota y marcar como completada
   const handleGuardarNota = async () => {
     // 4.1 Guardar nota de sesión
-    await fetch('/api/notassesion', {
+    await apiFetch('/api/notassesion', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         citaId: citaSeleccionada.id,
         terapeutaId: terapeutaId,
         notas: nota
-      })
+      }
     });
     // 4.2 Cambiar estado de la cita a Completada (solo estado y notas)
-    await fetch(`/api/citas/${citaSeleccionada.id}`, {
+    await apiFetch(`/api/citas/${citaSeleccionada.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         estado: 'Completada',
         notas: nota
-      })
+      }
     });
     setNota('');
     setCitaSeleccionada(null);
     // Refrescar citas desde el backend para asegurar el estado correcto
-    fetch(`/api/citas/terapeuta/${terapeutaId}`)
-      .then(res => res.json())
-      .then(data => setCitas(data));
+    apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
+      .then(data => setCitas(data))
+      .catch(() => setCitas([]));
   };
 
   // 5. Marcar como No asistió
   const handleNoAsistio = async (cita) => {
-    await fetch(`/api/citas/${cita.id}`, {
+    await apiFetch(`/api/citas/${cita.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         estado: 'NoAsistio',
         notas: cita.notas || ''
-      })
+      }
     });
-    fetch(`/api/citas/terapeuta/${terapeutaId}`)
-      .then(res => res.json())
-      .then(data => setCitas(data));
+    apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
+      .then(data => setCitas(data))
+      .catch(() => setCitas([]));
   };
 
   // Helper para saber si la cita está completada

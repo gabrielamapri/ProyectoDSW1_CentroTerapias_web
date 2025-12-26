@@ -4,7 +4,8 @@ const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? '' : 'http:/
 // NOTE: uses `token` key to match frontend (localStorage.getItem('token'))
 export async function apiFetch(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
-  const token = localStorage.getItem('token')
+  // Buscar el token en 'token' o 'ct_token'
+  const token = localStorage.getItem('token') || localStorage.getItem('ct_token')
   const headers = new Headers(options.headers || {})
 
   if (options.body && !(options.body instanceof FormData)) {
@@ -48,7 +49,8 @@ export async function apiFetch(path, options = {}) {
 // Similar to apiFetch but returns both parsed data and the response headers
 export async function apiFetchWithMeta(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path.startsWith('/') ? '' : '/'}${path}`
-  const token = localStorage.getItem('token')
+  // Buscar el token en 'token' o 'ct_token'
+  const token = localStorage.getItem('token') || localStorage.getItem('ct_token')
   const headers = new Headers(options.headers || {})
 
   if (options.body && !(options.body instanceof FormData)) {
