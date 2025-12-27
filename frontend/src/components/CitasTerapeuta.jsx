@@ -31,6 +31,7 @@ function CitasTerapeuta() {
   const [nota, setNota] = useState('');
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState('');
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userRole = (user?.role || localStorage.getItem('userRole') || '').toLowerCase();
@@ -74,25 +75,20 @@ function CitasTerapeuta() {
   const handleGuardarNota = async () => {
     setGuardando(true);
     try {
-      await apiFetch('/api/notassesion', {
-        method: 'POST',
+      await apiFetch(`/api/citas/${citaSeleccionada.id}/completar`, {
+        method: 'PATCH',
         body: {
-          citaId: citaSeleccionada.id,
-          terapeutaId: terapeutaId,
-          notas: nota
-        }
-      });
-      await apiFetch(`/api/citas/${citaSeleccionada.id}`, {
-        method: 'PUT',
-        body: {
-          estado: 'Completada',
           notas: nota
         }
       });
       setNota('');
-      const data = await apiFetch(`/api/citas/terapeuta/${terapeutaId}`);
-      setCitas(data);
-      setCitaSeleccionada(null);
+      setCitaSeleccionada(null); // Cierra el modal inmediatamente
+      setMensaje('Nota guardada y cita completada'); // Muestra el mensaje de éxito
+      // Recarga las citas en segundo plano
+      apiFetch(`/api/citas/terapeuta/${terapeutaId}`)
+        .then(data => setCitas(data))
+        .catch(() => setCitas([]));
+      setTimeout(() => setMensaje(''), 2500);
     } finally {
       setGuardando(false);
     }
@@ -120,6 +116,11 @@ function CitasTerapeuta() {
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Mis Citas</h2>
+      {mensaje && (
+        <div style={{background:'#d1fae5',color:'#065f46',padding:'10px 16px',borderRadius:8,marginBottom:12,textAlign:'center',fontWeight:600}}>
+          {mensaje}
+        </div>
+      )}
       <div style={styles.selectRow}>
         <label style={styles.label}>Terapeuta:</label>
         {isTerapeuta ? (

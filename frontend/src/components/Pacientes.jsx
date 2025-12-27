@@ -268,10 +268,12 @@ export default function Pacientes() {
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Pacientes</h2>
-        {(userRole.toLowerCase() !== 'padre' && userRole.toLowerCase() !== 'terapeuta') && (
+        {(userRole.toLowerCase() !== 'padre') && (
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <input placeholder="Buscar por nombre, apellido o dni" className="input" style={{width:320}} value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} />
-            <button className="btn" onClick={() => setEditing({ __showFamilySelect: false })}>Nuevo Paciente</button>
+            {userRole.toLowerCase() !== 'terapeuta' && (
+              <button className="btn" onClick={() => setEditing({ __showFamilySelect: false })}>Nuevo Paciente</button>
+            )}
           </div>
         )}
       </div>

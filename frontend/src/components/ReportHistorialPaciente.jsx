@@ -368,7 +368,25 @@ export default function ReportHistorialPaciente(){
                 return (
                   <tr key={key}>
                     <td style={{width:'14%'}}>{formatDate(fecha)}</td>
-                    <td style={{width:90}}><span style={{display:'inline-block',padding:'4px 8px',borderRadius:12,backgroundColor: (translateEstado(estado)==='Completada'?'green':(translateEstado(estado)==='Anulada'?'crimson':(translateEstado(estado)==='Programada'?'#b8860b':''))),color:'#fff',fontWeight:600}}>{translateEstado(estado)}</span></td>
+                    <td style={{width:90}}>
+                      <span
+                        style={{
+                          display:'inline-block',
+                          padding:'4px 8px',
+                          borderRadius:12,
+                          backgroundColor:
+                            translateEstado(estado)==='Completada' ? 'green' :
+                            translateEstado(estado)==='Anulada' ? 'crimson' :
+                            translateEstado(estado)==='Programada' ? '#b8860b' :
+                            (String(estado).toLowerCase().includes('noasist') || String(estado).toLowerCase().includes('no asist')) ? '#e53935' :
+                            '#bdbdbd',
+                          color:'#fff',
+                          fontWeight:600
+                        }}
+                      >
+                        {translateEstado(estado)}
+                      </span>
+                    </td>
                     <td style={{width:'18%'}}>{renderVal(terapeutaVal)}</td>
                     <td style={{width:'12%'}}>{renderVal(especialVal)}</td>
                     <td style={{width:'22%'}}>{renderVal(tipoVal)}</td>

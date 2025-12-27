@@ -190,7 +190,7 @@ if (userRole && userRole.toLowerCase() === 'padre' && userEmail) {
     <section>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Familias</h2>
-        {(userRole === 'Admin') && (
+        {(userRole === 'Admin' || (userRole && userRole.toLowerCase() === 'terapeuta')) && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <input
               type="text"
@@ -200,7 +200,9 @@ if (userRole && userRole.toLowerCase() === 'padre' && userEmail) {
               onChange={e => setSearch(e.target.value)}
               style={{ width: 380 }}
             />
-            <button className="btn" onClick={() => setEditing({})}>Nueva Familia</button>
+            {userRole === 'Admin' && (
+              <button className="btn" onClick={() => setEditing({})}>Nueva Familia</button>
+            )}
           </div>
         )}
       </div>

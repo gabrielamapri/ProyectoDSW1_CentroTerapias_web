@@ -80,7 +80,6 @@ export default function Auth({ onLogin }) {
               <div style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{showFull ? token : (String(token).slice(0,24) + '...')}</div>
               <button className="btn small" onClick={handleCopy}>Copiar</button>
               <button className="btn small muted" onClick={()=>setShowFull(s=>!s)}>{showFull ? 'Ocultar' : 'Mostrar'}</button>
-              <button className="btn small muted" onClick={handleLogout}>Cerrar sesión</button>
             </div>
             {showFull && (
               <pre style={{ whiteSpace: 'pre-wrap', marginTop:8, background:'#f3f4f6', padding:8, borderRadius:6 }}>{String(token)}</pre>

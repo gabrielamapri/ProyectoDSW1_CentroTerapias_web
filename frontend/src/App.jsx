@@ -157,8 +157,8 @@ export default function App() {
               )}
               <button className={view==='notas'? 'active':''} onClick={() => setView('notas')}>Notas Sesión</button>
               <button className={view==='report-historial'? 'active':''} onClick={() => setView('report-historial')}>Reporte: Historial de Paciente</button>
-              {/* Ocultar reportes para rol padre */}
-              {!isPadre && !isTerapeuta && (
+              {/* Mostrar reportes también para terapeuta (solo ocultar para padre) */}
+              {!isPadre && (
                 <>
                   <button className={view==='report-historial-citas'? 'active':''} onClick={() => setView('report-historial-citas')}>Reporte: Historial de Citas</button>
                   <button className={view==='report-citas-proximas'? 'active':''} onClick={() => setView('report-citas-proximas')}>Reporte: Citas Próximas</button>
@@ -263,8 +263,8 @@ export default function App() {
               <h3 style={{margin:'0 0 6px 0'}}>Reporte: Historial de Paciente</h3>
               <small className="muted">Ver historial de un paciente</small>
             </div>
-            {/* Tarjetas de reportes ocultas para rol padre */}
-            {!isPadre && !isTerapeuta && (
+            {/* Tarjetas de reportes ocultas solo para rol padre */}
+            {!isPadre && (
               <>
                 {/* Tarjeta para Reporte: Historial de Citas */}
                 <div className="card home-card pastel" onClick={() => setView('report-historial-citas')}>
@@ -323,7 +323,7 @@ export default function App() {
           {token && (
             <>
               <span style={{marginRight:8}}>Autenticado</span>
-              <button className="btn ghost" onClick={handleLogout}>Cerrar sesión</button>
+              {/* <button className="btn ghost" onClick={handleLogout}>Cerrar sesión</button> */}
             </>
           )}
         </div>

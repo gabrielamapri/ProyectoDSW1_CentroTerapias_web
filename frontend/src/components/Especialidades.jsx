@@ -46,6 +46,15 @@ export default function Especialidades(){
     return (
       <section>
         <h2>Especialidades</h2>
+        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:12}}>
+          <input 
+            placeholder="Buscar por nombre" 
+            className="input" 
+            style={{width:280}} 
+            value={search} 
+            onChange={e=>setSearch(e.target.value)} 
+          />
+        </div>
         <div style={{marginTop:12}} className="card">
           <table className="table pastel">
             <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>

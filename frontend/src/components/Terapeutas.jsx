@@ -60,6 +60,15 @@ export default function Terapeutas() {
     return (
       <section>
         <h2>Terapeutas</h2>
+        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:12}}>
+          <input
+            placeholder="Buscar por nombre, apellido, especialidad o dni"
+            className="input"
+            style={{width:320}}
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+          />
+        </div>
         <div style={{marginTop:12}} className="card">
           <table className="table pastel">
             <thead>
@@ -80,8 +89,8 @@ export default function Terapeutas() {
                   <td>{t.Apellidos ?? t.apellidos ?? '—'}</td>
                   <td>{t.DNI ?? t.Dni ?? t.dni ?? '—'}</td>
                   <td>{t.Correo ?? t.correo ?? t.email ?? t.Email ?? '—'}</td>
-                  <td>{t.especialidadNombre ?? t.EspecialidadNombre ?? t.Especialidad?.Nombre ?? t.Especialidad ?? '—'}</td>
-                  <td style={{maxWidth:340}}>{t.Presentacion ?? t.presentacion ?? '—'}</td>
+                  <td>{t.EspecialidadNombre ?? t.especialidadNombre ?? t.Especialidad ?? t.especialidad ?? '—'}</td>
+                  <td>{t.Presentacion ?? t.presentacion ?? '—'}</td>
                   <td>{t.Telefono ?? t.telefono ?? t.phone ?? '—'}</td>
                 </tr>
               ))}
@@ -144,7 +153,10 @@ async function handleDelete(t) {
 }
 
   function handleEdit(t) {
-    setEditing({ ...t })
+    setEditing({
+      ...t,
+      EspecialidadId: t.EspecialidadId ?? t.especialidadId ?? t.Especialidad?.Id ?? t.Especialidad?.id ?? ''
+    })
   }
 
   async function handleSaveEdit(updated) {

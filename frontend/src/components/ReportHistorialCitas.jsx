@@ -33,7 +33,7 @@ export default function ReportHistorialCitas() {
 
   // Datos y métricas
   const [items, setItems] = useState([]);
-  const [metrics, setMetrics] = useState({ total: 0, completadas: 0, canceladas: 0, programadas: 0 });
+  const [metrics, setMetrics] = useState({ total: 0, completadas: 0, canceladas: 0, noAsistio: 0 });
 
   // UI
   const [loading, setLoading] = useState(false);
@@ -96,12 +96,12 @@ export default function ReportHistorialCitas() {
         total: res?.totalCitas ?? res?.TotalCitas ?? (Array.isArray(list) ? list.length : 0),
         completadas: res?.completadas ?? res?.Completadas ?? 0,
         canceladas: res?.canceladas ?? res?.Canceladas ?? 0,
-        programadas: res?.programadas ?? res?.Programadas ?? 0,
+        noAsistio: res?.noAsistio ?? res?.NoAsistio ?? 0,
       });
     } catch (e) {
       setError(e?.message || String(e));
       setItems([]);
-      setMetrics({ total: 0, completadas: 0, canceladas: 0, programadas: 0 });
+      setMetrics({ total: 0, completadas: 0, canceladas: 0, noAsistio: 0 });
     } finally {
       setLoading(false);
     }
@@ -254,8 +254,23 @@ export default function ReportHistorialCitas() {
 
         {!loading && !error && (
           <>
-            <div className="muted" style={{ marginBottom: 8 }}>
-              Total: {metrics.total} · Completadas: {metrics.completadas} · Programadas: {metrics.programadas} · Canceladas: {metrics.canceladas}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ background: '#e3eafe', color: '#1a237e', borderRadius: 8, padding: '12px 20px', minWidth: 120, textAlign: 'center', fontWeight: 600, boxShadow: '0 1px 4px #0001' }}>
+                Total
+                <div style={{ fontSize: 24, fontWeight: 700 }}>{metrics.total}</div>
+              </div>
+              <div style={{ background: '#e8f5e9', color: '#256029', borderRadius: 8, padding: '12px 20px', minWidth: 120, textAlign: 'center', fontWeight: 600, boxShadow: '0 1px 4px #0001' }}>
+                Completadas
+                <div style={{ fontSize: 24, fontWeight: 700 }}>{metrics.completadas}</div>
+              </div>
+              <div style={{ background: '#fffde7', color: '#bfa600', borderRadius: 8, padding: '12px 20px', minWidth: 120, textAlign: 'center', fontWeight: 600, boxShadow: '0 1px 4px #0001' }}>
+                No asistió
+                <div style={{ fontSize: 24, fontWeight: 700 }}>{metrics.noAsistio}</div>
+              </div>
+              <div style={{ background: '#ffebee', color: '#b71c1c', borderRadius: 8, padding: '12px 20px', minWidth: 120, textAlign: 'center', fontWeight: 600, boxShadow: '0 1px 4px #0001' }}>
+                Canceladas
+                <div style={{ fontSize: 24, fontWeight: 700 }}>{metrics.canceladas}</div>
+              </div>
             </div>
 
             <table className="table pastel">

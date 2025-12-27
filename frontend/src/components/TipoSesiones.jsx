@@ -80,6 +80,15 @@ export default function TipoSesiones(){
     return (
       <section>
         <h2>Tipos de Sesión</h2>
+        <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:12}}>
+          <input 
+            placeholder="Buscar por nombre" 
+            className="input" 
+            style={{width:280}} 
+            value={search} 
+            onChange={e=>setSearch(e.target.value)} 
+          />
+        </div>
         <div style={{marginTop:12}} className="card">
           <table className="table pastel">
             <thead>
@@ -111,7 +120,7 @@ export default function TipoSesiones(){
     <section>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h2>Tipos de Sesión</h2>
-        {!(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && (
+        {!(userRole === 'Padre' && userEmail === 'familia@centro.local') && (
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <input 
               placeholder="Buscar por nombre" 
@@ -120,7 +129,9 @@ export default function TipoSesiones(){
               value={search} 
               onChange={e=>setSearch(e.target.value)} 
             />
-            <button className="btn" onClick={()=>setEditing({ DuracionMinutos: 45 })}>Nuevo Tipo</button>
+            {!isTerapeuta && (
+              <button className="btn" onClick={()=>setEditing({ DuracionMinutos: 45 })}>Nuevo Tipo</button>
+            )}
           </div>
         )}
       </div>
@@ -144,7 +155,7 @@ export default function TipoSesiones(){
                   <td>{(it.Precio ?? it.precio ?? null) != null ? (it.Precio ?? it.precio).toString() : '—'}</td>
                 {!(userRole === 'Padre' && userEmail === 'familia@centro.local') && !isTerapeuta && (
                   <td className="actions">
-                    <button className="btn small" onClick={()=>setEditing(it)}>Editar</button>
+                    <button className="btn small" onClick={()=>setEditing({...it, DuracionMinutos: 45})}>Editar</button>
                     <button className="btn small ghost" onClick={()=>handleDelete(it)}>Eliminar</button>
                   </td>
                 )}
@@ -169,10 +180,7 @@ export default function TipoSesiones(){
             <div style={{display:'grid',gap:8}}>
               <input className="input" placeholder="Nombre" value={editing.Nombre ?? editing.nombre ?? ''} onChange={e=>setEditing(s=>({...s,Nombre:e.target.value}))} />
               <textarea className="input" placeholder="Descripción" value={editing.Descripcion ?? editing.descripcion ?? ''} onChange={e=>setEditing(s=>({...s,Descripcion:e.target.value}))} />
-              <input className="input" type="number" min="0" placeholder="Duración (min)" value={editing.DuracionMinutos ?? editing.duracionMinutos ?? ''} 
-                onChange={e=>setEditing(s=>({...s,DuracionMinutos:e.target.value}))}
-                readOnly={editing && editing.DuracionMinutos === 45 && !editing.id && !editing.Id}
-              />
+              <input className="input" type="number" min="0" placeholder="Duración (min)" value={editing.DuracionMinutos ?? editing.duracionMinutos ?? ''} onChange={e=>setEditing(s=>({...s,DuracionMinutos:e.target.value}))} />
               <input className="input" type="number" step="0.01" min="0" placeholder="Precio" value={editing.Precio ?? editing.precio ?? ''} onChange={e=>setEditing(s=>({...s,Precio:e.target.value}))} />
               <select
                 className="input"
